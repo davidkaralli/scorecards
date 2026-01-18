@@ -239,15 +239,15 @@ function getScDataForGroup(wcif, eventId, round, actId) {
  */
 export function getScDataForRound(wcif, eventId, round) {
     /* Non-blank (competitor-specific) scorecards */
-    const sc_data_arr =
+    const scDataArr =
         wcif.getGroupActIds(eventId, round)
         .flatMap(actId => getScDataForGroup(wcif, eventId, round, actId));
 
     /* Add blank scorecards */
-    const numBlanks = 4 + (4 - (sc_data_arr.length % 4));
-    sc_data_arr.push(...getScDataForRoundBlank(wcif, eventId, round, numBlanks));
+    const numBlanks = 4 + (4 - (scDataArr.length % 4));
+    scDataArr.push(...getScDataForRoundBlank(wcif, eventId, round, numBlanks));
 
-    return sc_data_arr;
+    return scDataArr;
 }
 
 /**
@@ -260,13 +260,13 @@ export function getScDataForRound(wcif, eventId, round) {
 export function getScDataForEvent(wcif, eventId) {
     const numRounds = wcif.getNumRounds(eventId);
 
-    let sc_data_arr = [];
+    let scDataArr = [];
 
     for (let round = 1; round <= numRounds; round++) {
-        sc_data_arr = sc_data_arr.concat(getScDataForRound(wcif, eventId, round));
+        scDataArr = scDataArr.concat(getScDataForRound(wcif, eventId, round));
     }
 
-    return sc_data_arr;
+    return scDataArr;
 }
 
 /* Blank scorecards */

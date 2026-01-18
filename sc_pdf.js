@@ -500,22 +500,6 @@ function pdfGetScXCenter(doc) {
 }
 
 /**
- * TODO: description
- *
- * @param {function} func - Function to call. TODO: explain prototype
- * @param {jsPDF} doc - jsPDF object, with the coordinate (0, 0) being the top-left corner of the scorecard
- * @param {SCPDFData} scPdfData - SCPDFData object
- * @param {number} x - Horizontal position to draw/insert an element
- * @param {number} y - Vertical position to draw/insert an element
- * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
- */
-function pdfFunc(func, doc, scPdfData, x, y) {
-    const to_add = func(doc, scPdfData, x, y);
-
-    return to_add;
-}
-
-/**
  * TODO: descripton
  * @param {number} amount - Quantity of vertical space to skip
  * @returns TODO
@@ -767,7 +751,7 @@ function pdfWriteTimeLimit(doc, scPdfData, x, y) {
         y,
         fontSize,
         scPdfData.timeLimitStartText,
-        scPdfData.timeLimitEndText
+        scPdfData.timeLimitEndText,
     );
 
     return fontSize;
@@ -1070,7 +1054,7 @@ function drawCompetitorScorecard(doc, scPdfData, x, y) {
     ];
 
     for (const func of funcs) {
-        y += pdfFunc(func, doc, scPdfData, x, y);
+        y += func(doc, scPdfData, x, y);
     }
 }
 
@@ -1088,11 +1072,6 @@ function drawRoundBlankScorecard(doc, scPdfData, x, y) {
         pdfWriteCompetitionName,
         pdfSkip(7),
         pdfAddHeaderTable,
-//        pdfSkip(4),
-//        pdfWritePersonName,
-//        pdfSkip(5),
-//        pdfWriteWcaId,
-//        pdfSkip(7),
         // Leave enough space to write the name and WCA ID
         pdfSkip(58),
         pdfWriteTimeLimit,
@@ -1109,7 +1088,7 @@ function drawRoundBlankScorecard(doc, scPdfData, x, y) {
     ];
 
     for (const func of funcs) {
-        y += pdfFunc(func, doc, scPdfData, x, y);
+        y += func(doc, scPdfData, x, y);
     }
 }
 
