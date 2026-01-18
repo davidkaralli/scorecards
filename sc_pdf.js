@@ -5,7 +5,7 @@
  */
 
 import { WCIF } from './wcif.js';
-import { getScDataForEvent, SCData, CumulRoundInfo } from './sc_data.js';
+import { getScDataForEvent, SCData, CumulRoundInfo, SCType } from './sc_data.js';
 import { jsPDF } from 'jspdf';
 import { applyPlugin } from 'jspdf-autotable';
 
@@ -187,7 +187,7 @@ export class SCPDFData {
      */
     #setPersonData(scData) {
         this.registrantId = String(scData.registrantId);
-        this.wcaId = scData.wcaId ?? 'New Competitor';
+        this.wcaId = scData.newCompetitor ? 'New Competitor' : scData.wcaId;
         this.#setNameData(scData.personName);
     }
 
@@ -384,16 +384,50 @@ export class SCPDFData {
         this.group = `${roomText}${scData.groupNum}`;
     }
 
-    static competitorScPdfData(scData) {
-        const scPdfData = new SCPDFData;
+    /**
+     * Generate an SCPDFData object from an SCData object
+     *
+     * @param {SCData} scData - SCData object
+     * @return {SCPDFData}
+     */
+    // TODO: we can probably just use the constructor tbh
+    static fromScData(scData) {
+        const scPdfData = new SCPDFData();
 
+        scPdfData.type = scData.type;
         scPdfData.compName = scData.compName;
 
-        scPdfData.#setPersonData(scData);
-        scPdfData.#setEventData(scData);
-        scPdfData.#setGroupData(scData);
+        switch (scData.type) {
+            case SCType.competitor:
+                scPdfData.#setCompetitorScData(scData);
+                break;
+            case SCType.roundBlank:
+                scPdfData.#setRoundBlankScData(scData);
+                break;
+        }
 
         return scPdfData;
+    }
+
+    /**
+     * Fill in SCPDFData object members for a competitor scorecard
+     *
+     * @param {SCData} scData - SCData object
+     */
+    #setCompetitorScData(scData) {
+        this.#setPersonData(scData);
+        this.#setEventData(scData);
+        this.#setGroupData(scData);
+    }
+
+    /**
+     * Fill in SCPDFData object members for a round-specific blank scorecard
+     *
+     * @param {SCData} scData - SCData object
+     * @return {SCPDFData}
+     */
+    #setRoundBlankScData(scData) {
+        this.#setEventData(scData);
     }
 }
 
@@ -406,7 +440,7 @@ export class SCPDFData {
  */
 export function getScPdfDataForEvent(wcif, eventId) {
     return getScDataForEvent(wcif, eventId)
-            .map(SCPDFData.competitorScPdfData);
+            .map(SCPDFData.fromScData);
 }
 
 /**
@@ -536,10 +570,11 @@ function pdfAddHeaderTable(doc, scPdfData, x, y) {
         'Group',
     ]];
 
+    // For blank scorecard, some or all of these values are null
     const body = [[
-        scPdfData.registrantId,
-        scPdfData.eventAndRoundText,
-        scPdfData.group,
+        scPdfData.registrantId ?? '',
+        scPdfData.eventAndRoundText ?? '',
+        scPdfData.group ?? '',
     ]];
 
     const colWidths = [
@@ -1003,20 +1038,20 @@ function pdfAddExtraAttempts(doc, scPdfData, x, y) {
 }
 
 /**
- * Draw a single scorecard corresponding to the scPdfData object
+ * Draw a single scorecard for a competitor
  *
  * @param {jsPDF} doc - jsPDF object
  * @param {SCPDFData} scPdfData - SCPDFData object
  * @param {number} x - Horizontal position of top-left corner of scorecard
  * @param {number} y - Vertical position of top-left corner of scorecard
  */
-function drawScorecard(doc, scPdfData, x, y) {
+function drawCompetitorScorecard(doc, scPdfData, x, y) {
     const funcs = [
-        pdfSkip(21), // TODO: verify this is a good amount
+        pdfSkip(21),
         pdfWriteCompetitionName,
-        pdfSkip(7), // TODO: verify this is a good amount
+        pdfSkip(7),
         pdfAddHeaderTable,
-        pdfSkip(4), // TODO: verify this is a good amount
+        pdfSkip(4),
         pdfWritePersonName,
         pdfSkip(5),
         pdfWriteWcaId,
@@ -1040,17 +1075,75 @@ function drawScorecard(doc, scPdfData, x, y) {
 }
 
 /**
+ * Draw a single round-specific blank scorecard
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position of top-left corner of scorecard
+ * @param {number} y - Vertical position of top-left corner of scorecard
+ */
+function drawRoundBlankScorecard(doc, scPdfData, x, y) {
+    const funcs = [
+        pdfSkip(21),
+        pdfWriteCompetitionName,
+        pdfSkip(7),
+        pdfAddHeaderTable,
+//        pdfSkip(4),
+//        pdfWritePersonName,
+//        pdfSkip(5),
+//        pdfWriteWcaId,
+//        pdfSkip(7),
+        // Leave enough space to write the name and WCA ID
+        pdfSkip(58),
+        pdfWriteTimeLimit,
+        pdfSkip(2),
+        pdfWritePenaltyExample,
+        pdfSkip(7),
+        pdfAddPreCutoffAttempts,
+        pdfWriteCutoff,
+        pdfAddPostCutoffAttempts,
+        pdfSkip(2),
+        pdfWriteExtrasHeader,
+        pdfSkip(2),
+        pdfAddExtraAttempts,
+    ];
+
+    for (const func of funcs) {
+        y += pdfFunc(func, doc, scPdfData, x, y);
+    }
+}
+
+/**
+ * Draw a single scorecard corresponding to the SCPDFData object
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position of top-left corner of scorecard
+ * @param {number} y - Vertical position of top-left corner of scorecard
+ */
+function drawScorecard(doc, scPdfData, x, y) {
+    const typeToFunc = {
+        [SCType.competitor]: drawCompetitorScorecard,
+        [SCType.roundBlank]: drawRoundBlankScorecard,
+    };
+
+    typeToFunc[scPdfData.type](doc, scPdfData, x, y);
+}
+
+/**
  * Parse an array of SCPDFData objects and draw up to 4 scorecards on the given document
  *
  * @param {jsPDF} doc - jsPDF object
  * @param {SCPDFData[]} scPdfSubset - array of 4 SCPDFData objects
  */
 function draw4Scorecards(doc, scPdfSubset) {
-    /* Ideally, length of scPdfSubset is exactly 4, with blanks scorecards at the end if needed */
-    if (scPdfSubset.length < 4)
-        console.log(`Warning: length of scPdfSubset is ${scPdfSubset.length} instead of 4. Did you mean to add blank scorecards to the end?`)
-    else if (scPdfSubset.length > 4)
+    /* Ideally, length of scPdfSubset is exactly 4, with blank scorecards at the end if needed */
+    if (scPdfSubset.length < 4) {
+        const eventAndRound = scPdfSubset[0].eventAndRoundText;
+        console.log(`Warning: ${eventAndRound}: length of scPdfSubset is ${scPdfSubset.length} instead of 4. Did you mean to add blank scorecards to the end?`)
+    } else if (scPdfSubset.length > 4) {
         throw Error(`Length of scPdfSubset is ${scPdfSubset.length} (must be <= 4)`);
+    }
 
     const xCenter = doc.internal.pageSize.getWidth() / 2;
     const yCenter = doc.internal.pageSize.getHeight() / 2;

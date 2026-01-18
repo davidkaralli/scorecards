@@ -6,6 +6,18 @@
 
 import { WCIF } from './wcif.js';
 
+/**
+ * Enum for scorecard types
+ */
+export const SCType = Object.freeze({
+    /* Fully filled-out scorecard, i.e. with competitor-specific information */
+    competitor  : Symbol('competitor'),
+    /* Partially filled-out scorecard, with information about a given round, but not assigned to a competitor */
+    roundBlank  : Symbol('roundBlank'),
+    /* Barely filled-out scorecard, with the structure being determined by the format */
+    formatBlank : Symbol('formatBlank'),
+});
+
 export class CumulRoundInfo {
     /**
      * Event ID, e.g. '333'
@@ -40,11 +52,19 @@ export class SCData {
     compName;
 
     /*** Person data ***/
-    /** @type {number} */
+    /* Unless otherwise noted, null types indicate that the entry is not present on a blank scorecard */
+    /** @type {number | null} */
     registrantId;
-    /** @type {string | null} */
+    /** @type {bool | null} */
+    newCompetitor;
+    /**
+     * If newCompetitor is true, a null value for wcaId indicates a new competitor.
+     *
+     * If newCompetitor is null, wcaId will also be null, with "null"s corresponding to a blank scorecard.
+     *
+     * @type {string | null} */
     wcaId;
-    /** @type {string} */
+    /** @type {string | null} */
     personName;
 
     /*** Event data ***/
@@ -98,6 +118,12 @@ export class SCData {
     numRooms;
 
     /**
+     * What kind of scorecard the data is for
+     * @type {Symbol}
+     */
+    type;
+
+    /**
      * Generate a scorecard for a given competitor (as opposed to a blank scorecard)
      *
      * @param {WCIF} wcif - WCIF object
@@ -110,10 +136,13 @@ export class SCData {
     static competitorScData(wcif, eventId, round, actId, registrantId) {
         const scData = new SCData;
 
+        scData.type = SCType.competitor;
+
         scData.compName = wcif.getCompName();
 
         /* Person data */
         scData.registrantId = registrantId;
+        scData.newCompetitor = wcif.isNewCompetitor(registrantId);
         scData.wcaId = wcif.getWcaId(registrantId);
         scData.personName = wcif.getPersonName(registrantId);
 
@@ -137,7 +166,46 @@ export class SCData {
         return scData;
     }
 
-    // TODO: blankScData
+    /**
+     * Generate a blank scorecard corresponding to a given round
+     *
+     * @param {WCIF} wcif - WCIF object
+     * @param {string} eventId - Event ID, e.g. '333'
+     * @param {number} round - Round number
+     * @returns {SCData}
+     */
+    static roundBlankScData(wcif, eventId, round) {
+        const scData = new SCData;
+
+        scData.type = SCType.roundBlank;
+
+        scData.compName = wcif.getCompName();
+
+        /* Person data */
+        scData.registrantId = null;
+        scData.newCompetitor = null;
+        scData.wcaId = null;
+        scData.personName = null;
+
+        /* Event data */
+        scData.eventId = eventId;
+        scData.round = round;
+        scData.numRounds = wcif.getNumRounds(eventId);
+        scData.format = wcif.getFormat(eventId, round);
+        scData.cutoffCentisec = wcif.getCutoffCentisec(eventId, round);
+        scData.cutoffAttempts = wcif.getCutoffAttempts(eventId, round);
+        scData.timeLimit = wcif.getTimeLimit(eventId, round);
+
+        scData.cumulRoundInfos =
+            wcif.getCumulRoundIds(eventId, round)
+                .map(roundId => new CumulRoundInfo(wcif, roundId));
+
+        scData.groupNum = null;
+        scData.groupRoom = null;
+        scData.numRooms = null;
+
+        return scData;
+    }
 }
 
 /**
@@ -170,8 +238,16 @@ function getScDataForGroup(wcif, eventId, round, actId) {
  * @returns {SCData[]}
  */
 export function getScDataForRound(wcif, eventId, round) {
-    return wcif.getGroupActIds(eventId, round)
+    /* Non-blank (competitor-specific) scorecards */
+    const sc_data_arr =
+        wcif.getGroupActIds(eventId, round)
         .flatMap(actId => getScDataForGroup(wcif, eventId, round, actId));
+
+    /* Add blank scorecards */
+    const numBlanks = 4 + (4 - (sc_data_arr.length % 4));
+    sc_data_arr.push(...getScDataForRoundBlank(wcif, eventId, round, numBlanks));
+
+    return sc_data_arr;
 }
 
 /**
@@ -193,8 +269,27 @@ export function getScDataForEvent(wcif, eventId) {
     return sc_data_arr;
 }
 
+/* Blank scorecards */
+
+
 function getScDataForFormatBlanks(format) {
 
+}
+
+/**
+ * Generate a list of SCData objects representing blank scorecards for a round
+ *
+ * @param {WCIF} wcif - WCIF object
+ * @param {string} eventId - Event ID, e.g. '333'
+ * @param {number} round - Round number
+ * @param {number} numBlanks - Number of blank scorecards
+ * @returns {SCData[]}
+ */
+export function getScDataForRoundBlank(wcif, eventId, round, numBlanks) {
+    return Array(numBlanks)
+        .fill(
+            SCData.roundBlankScData(wcif, eventId, round)
+        );
 }
 
 // TODO: sorting functions

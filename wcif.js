@@ -379,6 +379,18 @@ export class WCIF {
    }
 
    /**
+    * Return whether or not a person is a new competitor
+    *
+    * @param {number} registrantId - Registrant ID of the person
+    * @returns {bool} - true if the person is a new competitor, false otherwise
+    */
+   isNewCompetitor(registrantId) {
+      const personObj = this.#getPersonObj(registrantId);
+
+      return personObj.wcaId === null;
+   }
+
+   /**
     * Get the WCA ID of a person
     *
     * @param {number} registrantId - Registrant ID of the person
