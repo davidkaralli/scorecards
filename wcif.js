@@ -202,7 +202,7 @@ export class WCIF {
     */
    getCompetitorsFromActId(actId) {
       function competingInAct(personObj) {
-         return personObj.assignments.some(x => x.activityId === actId && x.assignmentCode == 'competitor');
+         return personObj.assignments.some(x => x.activityId === actId && x.assignmentCode === 'competitor');
       }
 
       return this.#personsArr
