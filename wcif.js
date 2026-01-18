@@ -320,6 +320,72 @@ export class WCIF {
    }
 
    /**
+    * Return true if any competitor is assigned to a group for the round, false otherwise
+    *
+    * @param {string} eventId - Event ID, e.g. '333'
+    * @param {number} round - Round number
+    * @returns {bool}
+    */
+   groupsAreAssigned(eventId, round) {
+      // TODO: make this a function since it's used multiple times
+      const numAssigned = this
+            .getGroupActIds(eventId, round)
+            .flatMap(actId => this.getCompetitorsFromActId(actId))
+            .length;
+
+      return numAssigned > 0;
+   }
+
+   /**
+    * Get the number of people advancing to a round, assuming no no-shows
+    *
+    * For first-round events, just return the number of people assigned to a group
+    *
+    * @param {string} eventId - Event ID, e.g. '333'
+    * @param {number} round - Round number
+    * @returns {number} Number of people advancing to the round, assuming no no-shows
+    */
+   getNumAdvancingToRound(eventId, round) {
+      const pctAdvancingStack = [];
+      let baseNum;
+      let i;
+
+      for (i = round; i >= 1; i--) {
+         if (i === 1 || this.groupsAreAssigned(eventId, i)) {
+            baseNum = this
+               .getGroupActIds(eventId, i)
+               .flatMap(actId => this.getCompetitorsFromActId(actId))
+               .length;
+            break;
+         }
+
+         const advanceObj = this
+            .#getRoundObj(eventId, i - 1)
+            .advancementCondition;
+
+         // TODO: throw error if no advancement conditions exist
+
+         if (advanceObj.type === 'ranking') {
+            baseNum = advanceObj.level;
+            break;
+         }
+
+         // Advancement type is percent
+         pctAdvancingStack.push(advanceObj.level);
+      }
+
+      let numAdvancing = baseNum;
+      let pct;
+
+      while (pctAdvancingStack.length !== 0) {
+         pct = pctAdvancingStack.pop();
+         numAdvancing = Math.floor(numAdvancing * (pct / 100));
+      }
+
+      return numAdvancing;
+   }
+
+   /**
     * Return array of round IDs that share cumulative time limits
     *
     * MULTIBLIND: supported; will always return an empty array

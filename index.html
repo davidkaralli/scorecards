@@ -2,31 +2,33 @@
 <html>
 <head>
     <title>TEST PAGE</title>
-    <!-- TODO: css -->
-    <style>
-        body {
-            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-        }
-    </style>
+    <link rel="stylesheet" href="./css/style.css">
     <script type="module" src="main.js"></script>
-<!--    <script type="module" src="pdf_sandbox.js"></script> -->
 </head>
 
 <body>
-    <form id="scorecardForm">
+    <form class="form" id="compIdForm">
         <p>
             <label>
                 Competition ID:
                 <input type="text" name="compId" />
             </label>
-            <!-- TODO: disable spaces -->
         </p>
-        <p class="button">
-            <button type="submit">Generate PDFs</button>
-        </p>
+        <div class="button">
+            <button type="submit">Next</button>
+        </div>
+        <p></p>
         <!-- TODO: move "style" to CSS using "error class" -->
         <div id="formError" style='color: red' class="error" hidden></div>
-
+    </form>
+    <form class="form form--hidden" id="optionsForm">
+        <h2>Options</h2>
+        <p></p>
+        <div>
+            <button type="button" name="backButton">Back</button>
+            <button type="submit">Generate scorecard PDFs</button>
+        </div>
+        <p></p>
     </form>
 </body>
 

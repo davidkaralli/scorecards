@@ -5,6 +5,7 @@
  */
 
 import { WCIF } from './wcif.js';
+import { Option, OptionsTab } from './options.js'
 import { getScDataForEvent, SCData, CumulRoundInfo, SCType } from './sc_data.js';
 import { jsPDF } from 'jspdf';
 import { applyPlugin } from 'jspdf-autotable';
@@ -453,11 +454,12 @@ export class SCPDFData {
  * Generate a list of SCPDFData objects for an event
  *
  * @param {WCIF} wcif - WCIF object
+ * @param {Option[]} options - array of option objects
  * @param {string} eventId - Event ID, e.g. '333'
  * @returns {SCPDFData[]}
  */
-export function getScPdfDataForEvent(wcif, eventId) {
-    return getScDataForEvent(wcif, eventId)
+export function getScPdfDataForEvent(wcif, options, eventId) {
+    return getScDataForEvent(wcif, options, eventId)
             .map(SCPDFData.fromScData);
 }
 
@@ -543,7 +545,7 @@ function pdfWriteCompetitionName(doc, scPdfData, x, y) {
     doc.setFontSize(fontSize);
     doc.setFont('OpenSans', 'bold');
 
-    const options = {
+    const textOptions = {
         align: 'center',
     };
 
@@ -551,7 +553,7 @@ function pdfWriteCompetitionName(doc, scPdfData, x, y) {
         scPdfData.compName,
         x + pdfGetScXCenter(doc),
         y + fontSize,
-        options,
+        textOptions,
     );
 
     return fontSize;
@@ -668,7 +670,7 @@ function pdfWritePersonName(doc, scPdfData, x, y) {
     }
 
     // Now write the name of the competitor
-    const options = {
+    const textOptions = {
         align: 'center',
     };
 
@@ -676,7 +678,7 @@ function pdfWritePersonName(doc, scPdfData, x, y) {
         name,
         x + pdfGetScXCenter(doc),
         y + finalSize,
-        options,
+        textOptions,
     );
 
     return finalSize;
@@ -698,7 +700,7 @@ function pdfWriteWcaId(doc, scPdfData, x, y) {
     doc.setFontSize(fontSize);
     doc.setFont('OpenSans', 'normal');
 
-    const options = {
+    const textOptions = {
         align: 'center',
     };
 
@@ -706,7 +708,7 @@ function pdfWriteWcaId(doc, scPdfData, x, y) {
         scPdfData.wcaId,
         x + pdfGetScXCenter(doc),
         y + fontSize,
-        options,
+        textOptions,
     );
 
     return fontSize;
@@ -807,7 +809,7 @@ function pdfTextBoldAndRegular(doc, x, y, fontSize, boldText, regularText, allow
      * we could pass the number of cumulative rounds from scPdfData to dynamically generate this string
      */
     if (allowMultiline && line2Slice !== regularText.length) {
-        const options = { align: 'center' };
+        const textOptions = { align: 'center' };
         const whitespace = 1;
 
         doc.setFont('OpenSans', 'normal');
@@ -816,7 +818,7 @@ function pdfTextBoldAndRegular(doc, x, y, fontSize, boldText, regularText, allow
             regularText.slice(line2Slice + 1),
             x + (doc.internal.pageSize.getWidth() / 4),
             y + whitespace + (fontSize * 2),
-            options,
+            textOptions,
         );
 
         textHeight += fontSize + whitespace;
@@ -1077,7 +1079,7 @@ function pdfWriteExtrasHeader(doc, scPdfData, x, y) {
     doc.setFontSize(fontSize);
     doc.setFont('OpenSans', 'bold');
 
-    const options = {
+    const textOptions = {
         align: 'center',
     };
 
@@ -1085,7 +1087,7 @@ function pdfWriteExtrasHeader(doc, scPdfData, x, y) {
         'Extras',
         x + pdfGetScXCenter(doc),
         y + fontSize,
-        options,
+        textOptions,
     );
 
     return fontSize;
@@ -1238,18 +1240,20 @@ function draw4Scorecards(doc, scPdfSubset) {
  * Generate a scorecard PDF for the given event
  *
  * @param {WCIF} wcif - WCIF object
+ * @param {Option[]} options - array of option objects
  * @param {string} eventId - Event ID, e.g. '333'
  */
-function genScPdfEvent(wcif, eventId) {
-    const scPdfArr = getScPdfDataForEvent(wcif, eventId);
+function genScPdfEvent(wcif, options, eventId) {
+    const scPdfArr = getScPdfDataForEvent(wcif, options, eventId);
 
     /* TODO: move this to its own function */
     const pdfFormat = 'letter';
-    const options = {
-        unit: 'pt',
-        format: pdfFormat,
-    };
-    const doc = new jsPDF(options);
+    const doc = new jsPDF(
+        {
+            unit: 'pt',
+            format: pdfFormat,
+        }
+    );
 
     /* Add all the pages that will be needed. Note that the first page was made when the jsPDF object was made */
     for (let i = 0; i < (scPdfArr.length / 4) - 1; i++) {
@@ -1273,10 +1277,13 @@ function genScPdfEvent(wcif, eventId) {
  * Generate scorecard PDFs for all events for the given WCIF
  *
  * @param {WCIF} wcif - WCIF object
+ * @param {OptionsTab[]} optionsTabs - array of OptionsTab objects
  */
-export function genScPdfsFromWcif(wcif) {
+export function genScPdfsFromWcif(wcif, optionsTabs) {
+    const options = optionsTabs.flatMap(x => x.options);
+
     for (const eventId of wcif.getEventIds()) {
-        genScPdfEvent(wcif, eventId);
+        genScPdfEvent(wcif, options, eventId);
     }
 }
 
@@ -1284,10 +1291,11 @@ export function genScPdfsFromWcif(wcif) {
  * Generate scorecard PDFs for all events for the given competition ID
  *
  * @param {compId} - Competition ID, e.g. WesternChampionship2026
+ * @param {Option[]} options - array of option objects
  */
 // TODO: unused?
-export async function genScPdfs(compId) {
+export async function genScPdfs(compId, options) {
     const wcif = await WCIF.fromCompId(compId);
 
-    genScPdfsFromWcif(wcif);
+    genScPdfsFromWcif(wcif, options);
 }
