@@ -14,6 +14,9 @@ applyPlugin(jsPDF);
 import './fonts/OpenSans-normal.js';
 import './fonts/OpenSans-bold.js';
 
+// Left/right margin for text
+const textMargin = 19.5;
+
 // TODO: JSDoc
 /* Similar to SCData, but SCData focuses on getting data from the WCIF,
  * while SCPDFData further processes that data for the PDF.
@@ -72,8 +75,21 @@ export class SCPDFData {
      * @type {string}
      */
     timeLimitStartText; // centiseconds
+
     /**
      * Text at the end of the time limit print, e.g. 'DNF if ≥ 6 minutes 25 seconds'
+     *
+     * Examples:
+     *
+     * 'DNF if ≥ 6 minutes 25 seconds' (for a non-cumulative time limit)
+     *
+     * '6 minutes 25 seconds' (for a single-round cumulative time limit)
+     *
+     * '1 hour for 4x4x4 Blindfolded Final and 5x5x5 Blindfolded Final' (for a cumulative time limit shared by 2 rounds)
+     *
+     * '1 hour, shared by 3 events' (for a cumulative time limit shared by 3 rounds; similar format is used for 3+ rounds)
+     *
+     * @type {string}
      */
     timeLimitEndText;
 
@@ -322,12 +338,14 @@ export class SCPDFData {
             cumulRoundInfos
             .map(x => this.#getEventAndRoundText(x.eventId, x.round, x.numRounds));
 
-        /* e.g. ' for 4x4x4 Blindfolded and 5x5x5 Blindfolded' */
-        if (cumulRoundInfos.length === 2)
+        if (cumulRoundInfos.length === 2) {
+            /* e.g. ' for 4x4x4 Blindfolded and 5x5x5 Blindfolded' */
             return ` for ${textArr.join(' and ')}`;
+        }
 
-        /* e.g. ' for 3x3x3 Blindfolded, 4x4x4 Blindfolded, and 5x5x5 Blindfolded' */
-        return ` for ${textArr.slice(0, -1).join(', ')}, and ${textArr.at(-1)}`;
+        // cumulRoundInfos.length >= 3
+        /* e.g. ', shared by 3 events' */
+        return `, shared by ${cumulRoundInfos.length} events`;
     }
 
     /**
@@ -629,7 +647,7 @@ function pdfAddHeaderTable(doc, scPdfData, x, y) {
  */
 function pdfWritePersonName(doc, scPdfData, x, y) {
     const name = scPdfData.personNameRoman;
-    const maxWidth = (doc.internal.pageSize.width / 2) - 39;
+    const maxWidth = (doc.internal.pageSize.width / 2) - (textMargin * 2);
     const defaultSize = 26;
     let finalSize = defaultSize;
 
@@ -680,7 +698,6 @@ function pdfWriteWcaId(doc, scPdfData, x, y) {
     doc.setFontSize(fontSize);
     doc.setFont('OpenSans', 'normal');
 
-
     const options = {
         align: 'center',
     };
@@ -696,6 +713,49 @@ function pdfWriteWcaId(doc, scPdfData, x, y) {
 }
 
 /**
+ * TODO: explain
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {string} boldText - Text to print in bold style
+ * @param {string} regularText - Text to print in normal style
+ * @returns {number} the index of the first character in regularText on the second line,
+ *     OR the length of regularText if it all fits on one line
+ */
+function getNewlineIndex(doc, boldText, regularText) {
+    // TODO: cache values based on argument
+    const maxWidth = (doc.internal.pageSize.width / 2) - (textMargin * 2);
+
+    let index = regularText.length;
+    let totalWidth;
+
+    for (index = regularText.length; index > 0; index--) {
+        // We only want to split on space characters,
+        // so don't waste CPU cycles checking the text size if this character isn't a space
+        if (index < regularText.length && regularText[index] != ' ')
+            continue
+
+        // TODO: save and restore font
+        // Get the total size of the first line
+        totalWidth = 0;
+        doc.setFont('OpenSans', 'bold');
+        totalWidth += doc.getTextWidth(`${boldText}: `);
+        doc.setFont('OpenSans', 'normal');
+        totalWidth += doc.getTextWidth(
+            regularText.slice(0, index)
+        );
+
+        // Two cases to return:
+        // 1. All of the text fits on one line without any splitting
+        // 2. We've found the space character at which to split the string into 2 lines
+        if (totalWidth <= maxWidth)
+            return index;
+    }
+
+    // index <= 0, which is a bug
+    throw new Error(`Newline index is ${index} for this multiline text: '${boldText}: ${regularText}`);
+}
+
+/**
  * Write bold text, followed by a bold colon and space, followed by regular text
  *
  * Font size MUST be set by caller
@@ -706,14 +766,22 @@ function pdfWriteWcaId(doc, scPdfData, x, y) {
  * @param {number} fontSize - Size of the font in points
  * @param {string} boldText - Text to print in bold style
  * @param {string} regularText - Text to print in normal style
+ * @param {string} allowMultiline - Whether the text can be printed on 2 lines
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
  */
-function pdfTextBoldAndRegular(doc, x, y, fontSize, boldText, regularText) {
+function pdfTextBoldAndRegular(doc, x, y, fontSize, boldText, regularText, allowMultiline=false) {
+    let textHeight = fontSize;
+
     // TODO: get font size/font and reset it
     doc.setFontSize(fontSize);
 
+    let line2Slice =
+        allowMultiline ?
+        getNewlineIndex(doc, boldText, regularText) : regularText.length;
+
     const textSegments = [
         { text: `${boldText}: `, style: 'bold' },
-        { text: regularText, style: 'normal' },
+        { text: regularText.slice(0, line2Slice), style: 'normal' },
     ]
 
     let totalWidth = 0;
@@ -723,13 +791,38 @@ function pdfTextBoldAndRegular(doc, x, y, fontSize, boldText, regularText) {
         totalWidth += segment.width;
     }
 
-    x += (doc.internal.pageSize.getWidth() / 2 - totalWidth) / 2;
+    let xLine1 = x +
+        ((doc.internal.pageSize.getWidth() / 2 - totalWidth) / 2);
 
     for (const segment of textSegments) {
         doc.setFont('OpenSans', segment.style);
-        doc.text(segment.text, x, y + fontSize);
-        x += segment.width;
+        doc.text(segment.text, xLine1, y + fontSize);
+        xLine1 += segment.width;
     }
+
+    // Print the second line if needed
+    /* TODO: this needs to be tested more robustly, e.g. this breaks things:
+     * '10 hours 30 minutes 45.55 seconds for 4x4x4 Blindfolded Final and 5x5x5 Blindfolded Final'.
+     * maybe just fall back to the shared-by-multiple-events text if we overflow?
+     * we could pass the number of cumulative rounds from scPdfData to dynamically generate this string
+     */
+    if (allowMultiline && line2Slice !== regularText.length) {
+        const options = { align: 'center' };
+        const whitespace = 1;
+
+        doc.setFont('OpenSans', 'normal');
+        doc.text(
+            // Add 1 to skip the space
+            regularText.slice(line2Slice + 1),
+            x + (doc.internal.pageSize.getWidth() / 4),
+            y + whitespace + (fontSize * 2),
+            options,
+        );
+
+        textHeight += fontSize + whitespace;
+    }
+
+    return textHeight;
 }
 
 // TODO: some cumulative time limits are multi-line. deal with this
@@ -745,16 +838,15 @@ function pdfTextBoldAndRegular(doc, x, y, fontSize, boldText, regularText) {
 function pdfWriteTimeLimit(doc, scPdfData, x, y) {
     const fontSize = 10;
 
-    pdfTextBoldAndRegular(
+    return pdfTextBoldAndRegular(
         doc,
         x,
         y,
         fontSize,
         scPdfData.timeLimitStartText,
         scPdfData.timeLimitEndText,
+        true,
     );
-
-    return fontSize;
 }
 
 /**
@@ -769,7 +861,7 @@ function pdfWriteTimeLimit(doc, scPdfData, x, y) {
 function pdfWritePenaltyExample(doc, scPdfData, x, y) {
     const fontSize = 10.5;
 
-    pdfTextBoldAndRegular(
+    return pdfTextBoldAndRegular(
         doc,
         x,
         y,
@@ -777,8 +869,6 @@ function pdfWritePenaltyExample(doc, scPdfData, x, y) {
         'Penalty example',
         '4.25 + 2 = 6.25',
     );
-
-    return fontSize;
 }
 
 /* Constants for attempt tables */
@@ -936,7 +1026,7 @@ function pdfWriteCutoff(doc, scPdfData, x, y) {
     const yPadding = 4;
     const fontSize = 10;
 
-    pdfTextBoldAndRegular(
+    let textHeight = pdfTextBoldAndRegular(
         doc,
         x,
         y + yPadding,
@@ -945,7 +1035,7 @@ function pdfWriteCutoff(doc, scPdfData, x, y) {
         scPdfData.cutoffText,
     );
 
-    return fontSize + (yPadding * 2);
+    return textHeight + (yPadding * 2);
 }
 
 /**
