@@ -127,8 +127,7 @@ export class SCData {
         scData.timeLimit = wcif.getTimeLimit(eventId, round);
 
         scData.cumulRoundInfos =
-            wcif
-                .getCumulRoundIds(eventId, round)
+            wcif.getCumulRoundIds(eventId, round)
                 .map(roundId => new CumulRoundInfo(wcif, roundId));
 
         scData.groupNum = wcif.getGroupNum(actId);
