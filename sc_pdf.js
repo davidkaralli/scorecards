@@ -1,0 +1,1131 @@
+/**
+ * @module sc_pdf
+ * @description Functions for generating the scorecard PDF
+ * @author David Karalli
+ */
+
+import { WCIF } from './wcif.js';
+import { getScDataForEvent, SCData, CumulRoundInfo } from './sc_data.js';
+import { jsPDF } from 'jspdf';
+import { applyPlugin } from 'jspdf-autotable';
+
+applyPlugin(jsPDF);
+
+import './fonts/OpenSans-normal.js';
+import './fonts/OpenSans-bold.js';
+
+// TODO: JSDoc
+/* Similar to SCData, but SCData focuses on getting data from the WCIF,
+ * while SCPDFData further processes that data for the PDF.
+ */
+export class SCPDFData {
+    /**
+     * Name of the competition
+     * @type {string}
+     */
+    compName;
+
+    /*** Person data ***/
+    /** @type {string} */
+    registrantId;
+    /**
+     * WCA ID, or 'New Competitor' for competitors without WCA IDs
+     * @type {string}
+     */
+    wcaId;
+    /**
+     * Roman-readable part of the name
+     * @type {string} */
+    personNameRoman;
+    /**
+     * Translation; null if a translation isn't present
+     * @type {string | null}
+     */
+    personNameTrans;
+
+    /*** Event data ***/
+    /**
+     * Event and round, e.g. '3x3x3 Cube Round 1' or 'Square-1 Final'
+     * @type: {string}
+     */
+    eventAndRoundText;
+    /**
+     * Number of attempts to list before the cutoff text
+     * @type {number}
+     */
+    attemptsPreCutoff;
+    /**
+     * Number of attempts to list after the cutoff text, or null if the cutoff text is absent
+     * @type {number | null}
+     */
+    attemptsPostCutoff;
+    /**
+     * Text at the end of the cutoff print, e.g. 'Continue if 1 or 2 < 6 minutes 25 seconds' or 'N/A'
+     *
+     * Null if the event doesn't support cutoffs (e.g. events with a Best of 3 format)
+     *
+     * @type {string | null}
+     */
+    cutoffText;
+    /**
+     * Text at the start of the time limit print; options are 'Time limit' or 'Cumulative time limit'
+     * @type {string}
+     */
+    timeLimitStartText; // centiseconds
+    /**
+     * Text at the end of the time limit print, e.g. 'DNF if ≥ 6 minutes 25 seconds'
+     */
+    timeLimitEndText;
+
+    /*** Group data ***/
+    /**
+     * Group, e.g. '1' or 'B2'
+     * @type {string}
+     */
+    group;
+
+    /**
+     * Map-like object that converts event IDs (like '333') to event names (like '3x3x3 Cube')
+     * @type {Object.<string, string>}
+     */
+    #eventIdToName = {
+        '333': '3x3x3 Cube',
+        '222': '2x2x2 Cube',
+        '444': '4x4x4 Cube',
+        '555': '5x5x5 Cube',
+        '666': '6x6x6 Cube',
+        '777': '7x7x7 Cube',
+        '333bf': '3x3x3 Blindfolded',
+        '333fm': '3x3x3 Fewest Moves',
+        '333oh': '3x3x3 One-Handed',
+        'clock': 'Clock',
+        'minx': 'Megaminx',
+        'pyram': 'Pyraminx',
+        'skewb': 'Skewb',
+        'sq1': 'Square-1',
+        '444bf': '4x4x4 Blindfolded',
+        '555bf': '5x5x5 Blindfolded',
+        '333mbf': '3x3x3 Multi-Blind',
+    };
+
+    /**
+     * Map-like object that converts formats (like 'a') to the number of attempts (like 5)
+     * @type {Object.<string, number>}
+     */
+    #formatToAttempts = {
+        'a': 5,
+        'm': 3,
+        '1': 1,
+        '2': 2,
+        '3': 3,
+        '5': 5,
+    };
+
+    /**
+     * Map-like object that converts formats (like 'a') to the number of pre-cutoff attempts on the scorecard if there is no cutoff.
+     * @type {Object.<string, (number|null)>}
+     */
+    /*
+     * Context: If no cutoff is available for an event that allows cutoffs, the scorecard needs to specify this as 'N/A'.
+     *
+     * If there's no cutoff for an event, we can't get the usual number of cutoff attempts from the WCIF, so that data
+     * needs to be stored here.
+     *
+     * Notably, this doesn't work for multiblind since multiblind cutoff can be Best of 1 OR 2. But this software doesn't support
+     * cutoffs for multiblind, so that's okay.
+     */
+    #formatToCutoffAttempts = {
+        'a': 2,
+        'm': 1,
+        '1': null,
+        '2': null,
+        '3': null,
+        '5': null,
+    };
+
+    /**
+     * Extract the Roman-readable part and non-Roman translation from a name, and set the corresponding variables.
+     *
+     * @param {string} scDataName - Person name from the SCData object
+     */
+    #setNameData(scDataName) {
+        /* In the WCA database, names can be formatted as follows:
+         * - Roman-readable characters only, e.g. 'Jason Chang'
+         * - Roman-readable characters followed by a translation in parentheses, e.g. 'Jason Chang (章維祐)'
+         *
+         * The following code sets the following variables:
+         * - this.personNameRoman is set to the Roman-readable part (e.g. 'Jason Chang')
+         * - this.personNameTrans is set to the translation (e.g. '章維祐')
+         *
+         * Regex isn't used here because the regex for this is hideous and hard to maintain
+         */
+
+        // Probably not needed, but protects against a space after the last parenthesis
+        scDataName = scDataName.trim();
+
+        const openParInd = scDataName.indexOf('(');
+
+        if (openParInd === -1) {
+            this.personNameRoman = scDataName;
+            this.personNameTrans = null;
+        } else {
+            this.personNameRoman =
+                scDataName
+                .slice(0, openParInd)
+                .trim();
+
+            this.personNameTrans =
+                scDataName
+                .slice(openParInd + 1, -1) // exclude open and closed parentheses
+        }
+    }
+
+    /**
+     * Read the SCData object and set person-related SCPDFData members
+     *
+     * @param {SCData} scData - SCData object
+     */
+    #setPersonData(scData) {
+        this.registrantId = String(scData.registrantId);
+        this.wcaId = scData.wcaId ?? 'New Competitor';
+        this.#setNameData(scData.personName);
+    }
+
+    /**
+     * Return a string describing the event and round, relative to the total number of rounds
+     *
+     * @param {string} eventId - Event ID, e.g. '333'
+     * @param {number} round - Round number
+     * @param {number} numRounds - Number of rounds of the event
+     * @returns {string} e.g. '3x3x3 Cube Final', 'Square-1 Round 1'
+     */
+    #getEventAndRoundText(eventId, round, numRounds) {
+        const eventText = this.#eventIdToName[eventId];
+        const roundText = (round === numRounds) ? 'Final' : `Round ${round}`;
+
+        return `${eventText} ${roundText}`;
+    }
+
+    /**
+     * Read the SCData object and set the event/round text member
+     *
+     * @param {SCData} scData
+     */
+    #setEventAndRoundText(scData) {
+        this.eventAndRoundText = this.#getEventAndRoundText(scData.eventId, scData.round, scData.numRounds);
+    }
+
+    /**
+     * Get the time text corresponding to the inputs
+     *
+     * @param {number} value - Time value; could be integer or floating point
+     * @param {string} unit - Unit of time (e.g. 'second'); may pluralized by appending an 's'
+     * @returns {string} Time text, e.g. '1 minute', '15 minutes', '6 hours', '6.25 seconds', '8 seconds', '8.01 seconds', '8.10 seconds', '' (if value === 0)
+     */
+    #getTimeTextPart(value, unit) {
+        /* No need to display any text if value is 0 */
+        if (value === 0)
+            return '';
+
+        const valueText = Number.isInteger(value) ? String(value) : value.toFixed(2);
+        const unitText = (value === 1) ? unit : `${unit}s`;
+
+        return `${valueText} ${unitText}`;
+    }
+
+    /**
+     * Convert a duration in centiseconds to a human-readable duration
+     *
+     * @param {number} totalCentisec - Duration in centiseconds
+     * @returns {string} Human-readable duration, e.g. '1 hour 6 minutes 25.12 seconds' or '1 minute'
+     */
+    #getTimeText(totalCentisec) {
+        const hours = Math.trunc(totalCentisec / (100 * 60 * 60));
+        const minutes = Math.trunc(totalCentisec / (100 * 60)) % 60;
+        const seconds = (totalCentisec / 100) % 60; // Centiseconds are intentionally kept
+
+        const timeParts = [
+            [hours,   'hour'],
+            [minutes, 'minute'],
+            [seconds, 'second'],
+        ];
+
+        return timeParts
+            .map(x => this.#getTimeTextPart(x[0], x[1], 2))
+            .filter(x => x !== '') // prevent an extra space if a string is blank
+            .join(' ');
+    }
+
+    /**
+     * Convert the cutoff in centiseconds to a human-readable description of the cutoff. Must only be called if the round has a cutoff
+     *
+     * @param {number} attempts - Number of attempts for the cutoff
+     * @param {number} totalCentisec - Cutoff duration in centiseconds
+     * @returns {string} Human-readable cutoff, e.g. 'Continue if 1 or 2 < 1 minute 10 seconds'
+     */
+    #getCutoffText(attempts, totalCentisec) {
+        let attemptsText = '';
+        if (attempts === 1)
+            attemptsText = '1';
+        else if (attempts === 2)
+            attemptsText = '1 or 2';
+        else
+            throw new Error(`attempts must be 1 or 2 (got ${attempts})`);
+
+        const timeText = this.#getTimeText(totalCentisec);
+
+        return `Continue if ${attemptsText} < ${timeText}`;
+    }
+
+    /**
+     * Read the SCData object and set cutoff-related SCPDFData members
+     *
+     * @param {SCData} scData - SCData object
+     */
+    #setCutoffData(scData) {
+        const totalAttempts = this.#formatToAttempts[scData.format];
+
+        if (scData.cutoffCentisec !== null) {
+            /* This round has a cutoff, so the cutoff needs to be printed on the scorecard. */
+            this.attemptsPreCutoff = scData.cutoffAttempts;
+            this.attemptsPostCutoff = totalAttempts - this.attemptsPreCutoff;
+            this.cutoffText = this.#getCutoffText(scData.cutoffAttempts, scData.cutoffCentisec);
+        } else if (this.#formatToCutoffAttempts[scData.format] !== null) {
+            /* This round has no cutoff, but cutoffs are allowed for the event. 'Cutoff: N/A' text is needed on the scorecard where the cutoff would be. */
+            this.attemptsPreCutoff = this.#formatToCutoffAttempts[scData.format];
+            this.attemptsPostCutoff = totalAttempts - this.attemptsPreCutoff;
+            this.cutoffText = 'N/A';
+        } else {
+            /* This round has no cutoff, and the event doesn't allow cutoffs. Don't include any cutoff text on the scorecard. */
+            /* (The event could also be multiblind, but this software doesn't support cutoffs for multiblind.) */
+            this.attemptsPreCutoff = totalAttempts;
+            this.attemptsPostCutoff = null;
+            this.cutoffText = null;
+        }
+    }
+
+    /**
+     * Generate text explaining which rounds share a cumulative time limit
+     *
+     * @param {CumulRoundInfo[]} cumulRoundInfos
+     * @returns {string} e.g. ' for 4x4x4 Blindfolded and 5x5x5 Blindfolded'. Blank string if cumulRoundInfos.length < 2
+     */
+    #getCumulRoundText(cumulRoundInfos) {
+        /* For size 1, we return a blank string because the cumulative time
+         * limit is implied to be for the event on the scorecard if no other
+         * events are listed.
+         */
+        if (cumulRoundInfos.length < 2)
+            return '';
+
+        const textArr =
+            cumulRoundInfos
+            .map(x => this.#getEventAndRoundText(x.eventId, x.round, x.numRounds));
+
+        /* e.g. ' for 4x4x4 Blindfolded and 5x5x5 Blindfolded' */
+        if (cumulRoundInfos.length === 2)
+            return ` for ${textArr.join(' and ')}`;
+
+        /* e.g. ' for 3x3x3 Blindfolded, 4x4x4 Blindfolded, and 5x5x5 Blindfolded' */
+        return ` for ${textArr.slice(0, -1).join(', ')}, and ${textArr.at(-1)}`;
+    }
+
+    /**
+     * Read the SCData object and set time limit-related SCPDFData members
+     *
+     * @param {SCData} scData - SCData object
+     */
+    #setTimeLimitData(scData) {
+        /*** Multi-blind: time limit text is always the same ***/
+        if (scData.eventId === '333mbf') {
+            this.timeLimitStartText = 'Time limit per solve';
+            this.timeLimitEndText = '10 minutes per cube, up to 1 hour';
+            return;
+        }
+
+        /*** All other events ***/
+
+        /* Start text */
+        if (scData.cumulRoundInfos.length === 0) {
+            this.timeLimitStartText = 'Time limit per solve';
+            this.timeLimitEndText =
+                'DNF if ≥ ' +
+                this.#getTimeText(scData.timeLimit);
+        } else {
+            this.timeLimitStartText = 'Cumulative time limit';
+            this.timeLimitEndText =
+                this.#getTimeText(scData.timeLimit) +
+                this.#getCumulRoundText(scData.cumulRoundInfos);
+        }
+    }
+
+    /**
+     * Read the SCData object and set event-related SCPDFData members
+     *
+     * @param {SCData} scData - SCData object
+     */
+    #setEventData(scData) {
+        this.#setEventAndRoundText(scData);
+        this.#setCutoffData(scData);
+        this.#setTimeLimitData(scData);
+    }
+
+    /**
+     * Read the SCData object and set the group SCPDFData member
+     *
+     * @param {SCData} scData - SCData object
+     */
+    #setGroupData(scData) {
+        let roomText = '';
+
+        if (scData.numRooms !== 1)
+            roomText = scData.groupRoom[0];
+
+        this.group = `${roomText}${scData.groupNum}`;
+    }
+
+    static competitorScPdfData(scData) {
+        const scPdfData = new SCPDFData;
+
+        scPdfData.compName = scData.compName;
+
+        scPdfData.#setPersonData(scData);
+        scPdfData.#setEventData(scData);
+        scPdfData.#setGroupData(scData);
+
+        return scPdfData;
+    }
+}
+
+/**
+ * Generate a list of SCPDFData objects for an event
+ *
+ * @param {WCIF} wcif - WCIF object
+ * @param {string} eventId - Event ID, e.g. '333'
+ * @returns {SCPDFData[]}
+ */
+export function getScPdfDataForEvent(wcif, eventId) {
+    return getScDataForEvent(wcif, eventId)
+            .map(SCPDFData.competitorScPdfData);
+}
+
+/**
+ * Draw horizontal and vertical cut lines through the page
+ *
+ * @param {jsPDF} doc - jsPDF object
+ */
+function drawCutLines(doc) {
+    const width = doc.internal.pageSize.getWidth();
+    const height = doc.internal.pageSize.getHeight();
+    const xCenter = width / 2;
+    const yCenter = height / 2;
+
+    doc.setLineDashPattern([5, 6]);
+    doc.setLineWidth(1.5);
+
+    // Vertical line
+    doc.line(xCenter, yCenter, xCenter, 0);
+    doc.line(xCenter, yCenter, xCenter, height);
+
+    // Horizontal line
+    doc.line(xCenter, yCenter, 0, yCenter);
+    doc.line(xCenter, yCenter, width, yCenter);
+
+    /* Reset the line dash pattern and line width */
+    doc.setLineDashPattern();
+    doc.setLineWidth(1);
+}
+
+
+/* TODO: create a scorecard drawer that draws the following info:
+ *
+ * competition name
+ * person id
+ * event
+ * group
+ * person name (make sure names with accents work)
+ * WCA ID
+ * time limit (make sure Everything in Evanston time limit fits)
+ * penalty example
+ * pre-cutoff boxes
+ * cutoff
+ * post-cutoff boxes
+ * extras
+ */
+
+
+
+/**
+ * Return the horizontal center coordinate of a scorecard, assuming the coordinate of the top left of the scorecard is (0, 0).
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @returns {number}
+ */
+function pdfGetScXCenter(doc) {
+    return doc.internal.pageSize.getWidth() / 4;
+}
+
+/**
+ * TODO: description
+ *
+ * @param {function} func - Function to call. TODO: explain prototype
+ * @param {jsPDF} doc - jsPDF object, with the coordinate (0, 0) being the top-left corner of the scorecard
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position to draw/insert an element
+ * @param {number} y - Vertical position to draw/insert an element
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfFunc(func, doc, scPdfData, x, y) {
+    const to_add = func(doc, scPdfData, x, y);
+
+    return to_add;
+}
+
+/**
+ * TODO: descripton
+ * @param {number} amount - Quantity of vertical space to skip
+ * @returns TODO
+ */
+function pdfSkip(amount) {
+    return function(doc, scPdfData, x, y) {
+        return amount;
+    };
+}
+
+/** Write the title of the competition
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfWriteCompetitionName(doc, scPdfData, x, y) {
+    const fontSize = 10.5;
+
+    // TODO: get font size/font and reset it
+    doc.setFontSize(fontSize);
+    doc.setFont('OpenSans', 'bold');
+
+    const options = {
+        align: 'center',
+    };
+
+    doc.text(
+        scPdfData.compName,
+        x + pdfGetScXCenter(doc),
+        y + fontSize,
+        options,
+    );
+
+    return fontSize;
+}
+
+/** Add a table that includes the competitor ID, event, round, and group
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfAddHeaderTable(doc, scPdfData, x, y) {
+    const head = [[
+        'ID',
+        'Event',
+        'Group',
+    ]];
+
+    const body = [[
+        scPdfData.registrantId,
+        scPdfData.eventAndRoundText,
+        scPdfData.group,
+    ]];
+
+    const colWidths = [
+        43,
+        180,
+        43,
+    ];
+
+    const columnStyles = {};
+    for (let i = 0; i < colWidths.length; i++) {
+        columnStyles[i] = { cellWidth: colWidths[i] };
+    }
+
+    // Total sum of colWidths
+    const tableWidth = colWidths.reduce(
+        (sum, x) => sum + x
+    );
+
+    const leftMargin = (doc.internal.pageSize.getWidth() / 2 - tableWidth) / 2;
+
+    doc.autoTable({
+        startY: y,
+        margin: {
+            top: 0,
+            bottom: 0,
+            left: x + leftMargin,
+            right: 0,
+        },
+        head: head,
+        body: body,
+        theme: 'grid',
+
+        columnStyles: columnStyles,
+
+        styles: {
+            font: 'OpenSans',
+            fontSize: 10.5,
+            textColor: [0, 0, 0], // black text
+            lineColor: [0, 0, 0], // black lines
+            lineWidth: 0.75,
+            halign: 'center',
+            valign: 'middle',
+            cellPadding: 4,
+        },
+
+        headStyles: {
+            fillColor: [200, 200, 200], // gray background
+            fontStyle: 'bold',
+            cellPadding: 3.5,
+        },
+
+        // Suppress spurious warning:
+        // 'Of the table content, x units width could not fit page'
+        tableWidth: 'wrap',
+    })
+
+    return doc.lastAutoTable.finalY - doc.lastAutoTable.settings.startY;
+}
+
+/**
+ * Write the Roman-readable part of a competitor's name
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfWritePersonName(doc, scPdfData, x, y) {
+    const name = scPdfData.personNameRoman;
+    const maxWidth = (doc.internal.pageSize.width / 2) - 39;
+    const defaultSize = 26;
+    let finalSize = defaultSize;
+
+    // TODO: get font size/font and reset it
+    doc.setFont('OpenSans', 'normal');
+
+    // If needed, reduce the font size until the name fits on one line
+    while (finalSize > 0) {
+        doc.setFontSize(finalSize);
+        if (doc.getTextWidth(name) <= maxWidth)
+            break;
+
+        finalSize -= 0.5;
+    }
+
+    if (finalSize === 0) {
+        throw Error(`Reached font size of 0. Name string is too long: ${name}`);
+    }
+
+    // Now write the name of the competitor
+    const options = {
+        align: 'center',
+    };
+
+    doc.text(
+        name,
+        x + pdfGetScXCenter(doc),
+        y + finalSize,
+        options,
+    );
+
+    return finalSize;
+}
+
+/**
+ * Write a competitor's WCA ID
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfWriteWcaId(doc, scPdfData, x, y) {
+    const fontSize = 16;
+
+    // TODO: get font size/font and reset it
+    doc.setFontSize(fontSize);
+    doc.setFont('OpenSans', 'normal');
+
+
+    const options = {
+        align: 'center',
+    };
+
+    doc.text(
+        scPdfData.wcaId,
+        x + pdfGetScXCenter(doc),
+        y + fontSize,
+        options,
+    );
+
+    return fontSize;
+}
+
+/**
+ * Write bold text, followed by a bold colon and space, followed by regular text
+ *
+ * Font size MUST be set by caller
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @param {number} fontSize - Size of the font in points
+ * @param {string} boldText - Text to print in bold style
+ * @param {string} regularText - Text to print in normal style
+ */
+function pdfTextBoldAndRegular(doc, x, y, fontSize, boldText, regularText) {
+    // TODO: get font size/font and reset it
+    doc.setFontSize(fontSize);
+
+    const textSegments = [
+        { text: `${boldText}: `, style: 'bold' },
+        { text: regularText, style: 'normal' },
+    ]
+
+    let totalWidth = 0;
+    for (const segment of textSegments) {
+        doc.setFont('OpenSans', segment.style);
+        segment.width = doc.getTextWidth(segment.text);
+        totalWidth += segment.width;
+    }
+
+    x += (doc.internal.pageSize.getWidth() / 2 - totalWidth) / 2;
+
+    for (const segment of textSegments) {
+        doc.setFont('OpenSans', segment.style);
+        doc.text(segment.text, x, y + fontSize);
+        x += segment.width;
+    }
+}
+
+// TODO: some cumulative time limits are multi-line. deal with this
+/**
+ * Write the time limit for the event
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfWriteTimeLimit(doc, scPdfData, x, y) {
+    const fontSize = 10;
+
+    pdfTextBoldAndRegular(
+        doc,
+        x,
+        y,
+        fontSize,
+        scPdfData.timeLimitStartText,
+        scPdfData.timeLimitEndText
+    );
+
+    return fontSize;
+}
+
+/**
+ * Write an example of how a penalty should be written
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfWritePenaltyExample(doc, scPdfData, x, y) {
+    const fontSize = 10.5;
+
+    pdfTextBoldAndRegular(
+        doc,
+        x,
+        y,
+        fontSize,
+        'Penalty example',
+        '4.25 + 2 = 6.25',
+    );
+
+    return fontSize;
+}
+
+/* Constants for attempt tables */
+const attemptLineWidth = 0.75;
+const attemptFontSize = 10;
+const attemptCellPadding = 5;
+const attemptColWidths = [25, 25, 166, 25, 25];
+
+/**
+ * Add table entries for the given attempts
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @param {number} startAttempt - number of the first attempt
+ * @param {number} endAttempt - number of the final attempt (exclusive)
+ * @param {boolean} extras - whether or not to print the attempts as extras (i.e., attempt numbers are prefixed by 'E')
+ */
+function pdfAddAttempts(doc, x, y, startAttempt, endAttempt, extras = false) {
+    const body = [];
+    let attemptText;
+    for (let i = startAttempt; i <= endAttempt; i++) {
+        attemptText = extras ? `E${i}` : i;
+        body.push([attemptText, ...Array(4).fill('')]);
+    }
+
+    // TODO: make this a function
+    const columnStyles = {};
+    for (let i = 0; i < attemptColWidths.length; i++) {
+        columnStyles[i] = { cellWidth: attemptColWidths[i] };
+    }
+
+    // Total sum of attemptColWidths
+    // TODO: make this a function
+    const tableWidth = attemptColWidths.reduce(
+        (sum, x) => sum + x
+    );
+
+    const leftMargin = (doc.internal.pageSize.getWidth() / 2 - tableWidth) / 2;
+
+    doc.autoTable({
+        startY: y,
+        margin: {
+            top: 0,
+            bottom: 0,
+            left: x + leftMargin,
+            right: 0,
+        },
+        body: body,
+        theme: 'grid',
+
+        columnStyles: columnStyles,
+
+        styles: {
+            font: 'OpenSans',
+            fontSize: attemptFontSize,
+            fontStyle: 'bold',
+            textColor: [0, 0, 0], // black text
+            lineColor: [0, 0, 0], // black lines
+            lineWidth: attemptLineWidth,
+            halign: 'center',
+            valign: 'middle',
+            cellPadding: attemptCellPadding,
+        },
+
+        // Suppress spurious warning:
+        // 'Of the table content, x units width could not fit page'
+        tableWidth: 'wrap',
+    })
+
+    return doc.lastAutoTable.finalY - doc.lastAutoTable.settings.startY;
+}
+
+/**
+ * Add a table for the attempts before the cutoff (all attempts if the cutoff doesn't exist)
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfAddPreCutoffAttempts(doc, scPdfData, x, y) {
+    // Draw 1 table for the header and 1 for the body (i.e. the actual attempts)
+    const header = [[ '#', 'S', 'Result', 'J', 'C' ]];
+
+    const columnStyles = {};
+    for (let i = 0; i < attemptColWidths.length; i++) {
+        columnStyles[i] = { cellWidth: attemptColWidths[i] };
+    }
+
+    // Total sum of attemptColWidths
+    const tableWidth = attemptColWidths.reduce(
+        (sum, x) => sum + x
+    );
+
+    const leftMargin = (doc.internal.pageSize.getWidth() / 2 - tableWidth) / 2;
+
+    doc.autoTable({
+        startY: y,
+        margin: {
+            top: 0,
+            bottom: 0,
+            left: x + leftMargin,
+            right: 0,
+        },
+        // Need to use body here instead of head, because jspdf-autotable doesn't
+        // size the columns properly if a table has only a head and no body.
+        body: header,
+        theme: 'grid',
+
+        columnStyles: columnStyles,
+        tableWidth: 'fixed',
+
+        styles: {
+            font: 'OpenSans',
+            fontSize: attemptFontSize,
+            fontStyle: 'bold',
+            textColor: [0, 0, 0], // black text
+            lineColor: [0, 0, 0], // black lines
+            lineWidth: attemptLineWidth,
+            halign: 'center',
+            valign: 'middle',
+            cellPadding: 3.5,
+            fillColor: [200, 200, 200], // gray background
+        },
+
+        // Suppress spurious warning:
+        // 'Of the table content, x units width could not fit page'
+        tableWidth: 'wrap',
+    })
+
+    // Now draw the body of the table (i.e. the actual attempts)
+    const headHeight = doc.lastAutoTable.finalY - doc.lastAutoTable.settings.startY;
+    const bodyHeight = pdfAddAttempts(doc, x, y + headHeight, 1, scPdfData.attemptsPreCutoff);
+
+    return headHeight + bodyHeight;
+}
+
+/**
+ * Write the cutoff if the event supports cutoffs
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfWriteCutoff(doc, scPdfData, x, y) {
+    // Don't write anything for events that don't support cutoffs
+    if (scPdfData.cutoffText === null)
+        return 0;
+
+    // Whitespace above and below the cutoff text
+    const yPadding = 4;
+    const fontSize = 10;
+
+    pdfTextBoldAndRegular(
+        doc,
+        x,
+        y + yPadding,
+        fontSize,
+        'Cutoff',
+        scPdfData.cutoffText,
+    );
+
+    return fontSize + (yPadding * 2);
+}
+
+/**
+ * Add a table for the attempts after the cutoff, if a cutoff exists
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfAddPostCutoffAttempts(doc, scPdfData, x, y) {
+    // Draw nothing if the event doesn't support cutoffs (i.e., we've already added all the attempts)
+    if (scPdfData.attemptsPostCutoff === null)
+        return 0;
+
+    return pdfAddAttempts(
+        doc,
+        x,
+        y,
+        scPdfData.attemptsPreCutoff + 1,
+        scPdfData.attemptsPreCutoff + scPdfData.attemptsPostCutoff,
+    );
+}
+
+/**
+ * Add a header for the extra attempts
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfWriteExtrasHeader(doc, scPdfData, x, y) {
+    const fontSize = 10;
+
+    // TODO: get font size/font and reset it
+    doc.setFontSize(fontSize);
+    doc.setFont('OpenSans', 'bold');
+
+    const options = {
+        align: 'center',
+    };
+
+    doc.text(
+        'Extras',
+        x + pdfGetScXCenter(doc),
+        y + fontSize,
+        options,
+    );
+
+    return fontSize;
+}
+
+/**
+ * Add a table for extra attempts
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position
+ * @param {number} y - Vertical position
+ * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
+ */
+function pdfAddExtraAttempts(doc, scPdfData, x, y) {
+    return pdfAddAttempts(
+        doc,
+        x,
+        y,
+        1,
+        2,
+        true,
+    );
+}
+
+/**
+ * Draw a single scorecard corresponding to the scPdfData object
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData} scPdfData - SCPDFData object
+ * @param {number} x - Horizontal position of top-left corner of scorecard
+ * @param {number} y - Vertical position of top-left corner of scorecard
+ */
+function drawScorecard(doc, scPdfData, x, y) {
+    const funcs = [
+        pdfSkip(21), // TODO: verify this is a good amount
+        pdfWriteCompetitionName,
+        pdfSkip(7), // TODO: verify this is a good amount
+        pdfAddHeaderTable,
+        pdfSkip(4), // TODO: verify this is a good amount
+        pdfWritePersonName,
+        pdfSkip(5),
+        pdfWriteWcaId,
+        pdfSkip(7),
+        pdfWriteTimeLimit,
+        pdfSkip(2),
+        pdfWritePenaltyExample,
+        pdfSkip(7),
+        pdfAddPreCutoffAttempts,
+        pdfWriteCutoff,
+        pdfAddPostCutoffAttempts,
+        pdfSkip(2),
+        pdfWriteExtrasHeader,
+        pdfSkip(2),
+        pdfAddExtraAttempts,
+    ];
+
+    for (const func of funcs) {
+        y += pdfFunc(func, doc, scPdfData, x, y);
+    }
+}
+
+/**
+ * Parse an array of SCPDFData objects and draw up to 4 scorecards on the given document
+ *
+ * @param {jsPDF} doc - jsPDF object
+ * @param {SCPDFData[]} scPdfSubset - array of 4 SCPDFData objects
+ */
+function draw4Scorecards(doc, scPdfSubset) {
+    /* Ideally, length of scPdfSubset is exactly 4, with blanks scorecards at the end if needed */
+    if (scPdfSubset.length < 4)
+        console.log(`Warning: length of scPdfSubset is ${scPdfSubset.length} instead of 4. Did you mean to add blank scorecards to the end?`)
+    else if (scPdfSubset.length > 4)
+        throw Error(`Length of scPdfSubset is ${scPdfSubset.length} (must be <= 4)`);
+
+    const xCenter = doc.internal.pageSize.getWidth() / 2;
+    const yCenter = doc.internal.pageSize.getHeight() / 2;
+
+    /* (x, y) coordinates coordinates corresponding to a
+     * scorecard position in a 2x2 grid
+     */
+    const coords = [
+        [0,       0],
+        [xCenter, 0],
+        [0,       yCenter],
+        [xCenter, yCenter],
+    ];
+
+    for (let i = 0; i < scPdfSubset.length; i++) {
+        let [x, y] = coords[i];
+
+        drawScorecard(doc, scPdfSubset[i], x, y);
+    }
+}
+
+/**
+ * Generate a scorecard PDF for the given event
+ *
+ * @param {WCIF} wcif - WCIF object
+ * @param {string} eventId - Event ID, e.g. '333'
+ */
+function genScPdfEvent(wcif, eventId) {
+    const scPdfArr = getScPdfDataForEvent(wcif, eventId);
+
+    /* TODO: move this to its own function */
+    const pdfFormat = 'letter';
+    const options = {
+        unit: 'pt',
+        format: pdfFormat,
+    };
+    const doc = new jsPDF(options);
+
+    /* Add all the pages that will be needed. Note that the first page was made when the jsPDF object was made */
+    for (let i = 0; i < (scPdfArr.length / 4) - 1; i++) {
+        doc.addPage(pdfFormat);
+    }
+
+    let scPdfSubset;
+    for (let i = 0; i < scPdfArr.length / 4; i++) {
+        /* jsPDF pages are 1-indexed */
+        doc.setPage(i + 1);
+        drawCutLines(doc);
+
+        scPdfSubset = scPdfArr.slice(i * 4, (i + 1) * 4);
+        draw4Scorecards(doc, scPdfSubset);
+    }
+
+    doc.save(`${wcif.compId}_${eventId}.pdf`);
+}
+
+/**
+ * Generate scorecard PDFs for all events for the given WCIF
+ *
+ * @param {WCIF} wcif - WCIF object
+ */
+export function genScPdfsFromWcif(wcif) {
+    for (const eventId of wcif.getEventIds()) {
+        genScPdfEvent(wcif, eventId);
+    }
+}
+
+/**
+ * Generate scorecard PDFs for all events for the given competition ID
+ *
+ * @param {compId} - Competition ID, e.g. WesternChampionship2026
+ */
+// TODO: unused?
+export async function genScPdfs(compId) {
+    const wcif = await WCIF.fromCompId(compId);
+
+    genScPdfsFromWcif(wcif);
+}
