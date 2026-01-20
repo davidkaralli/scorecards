@@ -54,13 +54,18 @@ export class WCIF {
    getCompName() {
       return this.#data.name;
    }
+
    /**
     * Get a list of events for the competition
+    *
+    * Excludes 3x3x3 Fewest Moves since this software doesn't support it
     *
     * @returns {string[]}
     */
    getEventIds() {
-      return this.#eventsArr.map(x => x.id);
+      return this.#eventsArr
+         .map(x => x.id)
+         .filter(x => x !== '333fm');
    }
 
    /**
