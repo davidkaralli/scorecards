@@ -246,7 +246,7 @@ function getScDataForGroup(wcif, eventId, round, actId) {
  * Generate a list of SCData objects for a round
  *
  * @param {WCIF} wcif - WCIF object
- * @param {*} optionsObj - object mapping Option IDs to Option objects
+ * @param {Object<string, Option>} optionsObj - Map-like object that maps Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  * @param {number} round - Round number
  * @returns {SCData[]}
@@ -267,7 +267,7 @@ export function getScDataForRound(wcif, optionsObj, eventId, round) {
  * Generate a list of SCData objects for an event
  *
  * @param {WCIF} wcif - WCIF object
- * @param {*} optionsObj - object mapping Option IDs to Option objects
+ * @param {Object<string, Option>} optionsObj - Map-like object that maps Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  * @returns {SCData[]}
  */
@@ -294,7 +294,7 @@ function getScDataForFormatBlanks(format) {
  * Generate a list of SCData objects representing blank scorecards for a round
  *
  * @param {WCIF} wcif - WCIF object
- * @param {*} optionsObj - object mapping Option IDs to Option objects
+ * @param {Object<string, Option>} optionsObj - Map-like object that maps Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  * @param {number} round - Round number
  * @returns {SCData[]}
