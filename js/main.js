@@ -8,7 +8,6 @@ compIdForm.addEventListener('submit', compIdToOptions);
 
 const optionsForm = document.querySelector('#optionsForm');
 const optionsFormInitialHTML = optionsForm.innerHTML;
-optionsAddEventListeners(optionsForm);
 
 const tabButtonDivId = 'optionsForm-tabButtonDiv'
 
@@ -17,18 +16,10 @@ let wcif = null;
 /** @type {OptionsTab[]} */
 let optionsTabArr = null;
 
-function optionsAddEventListeners(form) {
-    form.addEventListener('submit', optionsToPdf);
-    form.elements.backButton.addEventListener('click', optionsToCompId);
-}
-
-function reinitOptionsForm(form) {
-    form.innerHTML = optionsFormInitialHTML;
-    optionsAddEventListeners(form);
-}
-
 async function compIdToOptions(event) {
     event.preventDefault(); // prevent the page from reloading
+
+    optionsForm.innerHTML = optionsFormInitialHTML;
 
     const formError = document.querySelector('#formError');
     const compIdInput = event.target.elements.compId;
@@ -61,6 +52,30 @@ async function compIdToOptions(event) {
         return;
     }
 
+    /* TODO: better name for this? */
+    /* TODO: use nav instead of div? */
+    const navButtonDiv = document.createElement('div');
+    navButtonDiv.classList.add('options-form-nav-btn-row');
+
+    const backButton = document.createElement('button');
+    backButton.type = 'button';
+    backButton.textContent = 'Back';
+    backButton.classList.add('options-form-nav-btn');
+    backButton.classList.add('options-form-back-btn');
+    backButton.addEventListener('click', optionsToCompId);
+
+    const genButton = document.createElement('button');
+    genButton.type = 'submit';
+    genButton.textContent = 'Download scorecards';
+    genButton.classList.add('options-form-nav-btn');
+    genButton.classList.add('options-form-gen-btn');
+    genButton.addEventListener('click', optionsToPdf);
+
+    navButtonDiv.appendChild(backButton);
+    navButtonDiv.appendChild(genButton);
+
+    optionsForm.appendChild(navButtonDiv);
+
     optionsTabArr = optTabsCreate(wcif);
 
     let tabContainer = document.createElement('div');
@@ -78,6 +93,7 @@ async function compIdToOptions(event) {
         const tabContentDiv = document.createElement('div');
         tabContentDiv.id = optionsTab.getTabContentId();
 
+        console.log(tabContentDiv);
         tabContentDiv.classList.add('tab-content');
         // TODO: is this the best way to do this? i.e. can we just index into an array
         if (firstTab) {
@@ -100,9 +116,13 @@ async function compIdToOptions(event) {
             input.type = option.inputType;
             input.name = option.inputName;
             input.defaultValue = option.defaultValue;
+            input.classList.add('option-input');
+            // TODO: needs to be determined on an option-by-option basis, obviously
+            input.type = 'number';
 
             const label = document.createElement('label');
             label.textContent = option.inputText;
+            label.classList.add('option')
             label.appendChild(input);
             tabContentDiv.appendChild(label);
         }
@@ -130,7 +150,7 @@ async function compIdToOptions(event) {
 }
 
 function optionsToPdf(event) {
-    event.preventDefault(); // prevent the page from reloading
+    event.preventDefault();
 
     genScPdfsFromWcif(wcif, optionsTabArr);
 }
@@ -142,8 +162,6 @@ function optionsToCompId(event) {
     compIdForm.classList.remove('form--hidden');
     optionsForm.classList.add('form--hidden');
 
-    // Reinitialize the options form to ensure old options aren't reused
-    reinitOptionsForm(optionsForm);
 }
 
 /**
