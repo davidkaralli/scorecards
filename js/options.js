@@ -107,7 +107,8 @@ export class RoundBlanksOption extends Option {
      * @returns {string} - input text, e.g. 'Number of blank scorecards for 333 Round 1:'
      */
     static getInputText(eventId, round) {
-        return `${eventId} Round ${round}: `;
+        const eventName = WCIF.eventIdToName[eventId];
+        return `${eventName} Round ${round}: `;
     }
 
     /**
