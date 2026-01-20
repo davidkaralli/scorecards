@@ -102,30 +102,6 @@ export class SCPDFData {
     group;
 
     /**
-     * Map-like object that converts event IDs (like '333') to event names (like '3x3x3 Cube')
-     * @type {Object.<string, string>}
-     */
-    #eventIdToName = {
-        '333': '3x3x3 Cube',
-        '222': '2x2x2 Cube',
-        '444': '4x4x4 Cube',
-        '555': '5x5x5 Cube',
-        '666': '6x6x6 Cube',
-        '777': '7x7x7 Cube',
-        '333bf': '3x3x3 Blindfolded',
-        '333fm': '3x3x3 Fewest Moves',
-        '333oh': '3x3x3 One-Handed',
-        'clock': 'Clock',
-        'minx': 'Megaminx',
-        'pyram': 'Pyraminx',
-        'skewb': 'Skewb',
-        'sq1': 'Square-1',
-        '444bf': '4x4x4 Blindfolded',
-        '555bf': '5x5x5 Blindfolded',
-        '333mbf': '3x3x3 Multi-Blind',
-    };
-
-    /**
      * Map-like object that converts formats (like 'a') to the number of attempts (like 5)
      * @type {Object.<string, number>}
      */
@@ -211,16 +187,15 @@ export class SCPDFData {
     /**
      * Return a string describing the event and round, relative to the total number of rounds
      *
-     * @param {string} eventId - Event ID, e.g. '333'
+     * @param {string} eventName - Human-readable event name, e.g. '3x3x3 Cube'
      * @param {number} round - Round number
      * @param {number} numRounds - Number of rounds of the event
      * @returns {string} e.g. '3x3x3 Cube Final', 'Square-1 Round 1'
      */
-    #getEventAndRoundText(eventId, round, numRounds) {
-        const eventText = this.#eventIdToName[eventId];
+    #getEventAndRoundText(eventName, round, numRounds) {
         const roundText = (round === numRounds) ? 'Final' : `Round ${round}`;
 
-        return `${eventText} ${roundText}`;
+        return `${eventName} ${roundText}`;
     }
 
     /**
@@ -229,7 +204,7 @@ export class SCPDFData {
      * @param {SCData} scData
      */
     #setEventAndRoundText(scData) {
-        this.eventAndRoundText = this.#getEventAndRoundText(scData.eventId, scData.round, scData.numRounds);
+        this.eventAndRoundText = this.#getEventAndRoundText(scData.eventName, scData.round, scData.numRounds);
     }
 
     /**
@@ -337,7 +312,7 @@ export class SCPDFData {
 
         const textArr =
             cumulRoundInfos
-            .map(x => this.#getEventAndRoundText(x.eventId, x.round, x.numRounds));
+            .map(x => this.#getEventAndRoundText(x.eventName, x.round, x.numRounds));
 
         if (cumulRoundInfos.length === 2) {
             /* e.g. ' for 4x4x4 Blindfolded and 5x5x5 Blindfolded' */
