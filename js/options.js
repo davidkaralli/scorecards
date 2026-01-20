@@ -19,11 +19,10 @@ export class Option {
     inputType;
 
     /**
-     * Input name, e.g. 'numBlanks333-r1'
+     * Option ID, e.g. 'blanks-round-333-r1'
      * @type {string}
      */
-    // TODO: guarantee uniqueness with a prefix
-    inputName;
+    #id;
 
     /**
      * Human-readable text describing the input, e.g. 'Number of blanks for 3x3 Round 1'
@@ -45,15 +44,37 @@ export class Option {
     value;
 
     /**
+     * Generate the ID that corresponds to the given arguments
+     *
+     * This is used to easily find an option when generating the PDFs
+     *
+     * Must be overridden by the child class
+     *
+     * @param  {...any} args 
+     */
+    static genId(...args) {
+        throw new Error(`Called getOptionId on generic Option object. Args: ${args}`);
+    }
+
+    /**
+     * Get the ID of the Option object
+     *
+     * @returns {string}
+     */
+    getId() {
+        return this.#id;
+    }
+
+    /**
      * TODO: comment
      * @param {string} inputType
-     * @param {string} inputName
      * @param {string} inputText
+     * @param {string} id
      * @param {string} defaultValue
      */
-    constructor(inputType, inputName, inputText, defaultValue) {
+    constructor(inputType, inputText, id, defaultValue) {
         this.inputType = inputType;
-        this.inputName = inputName;
+        this.#id = id;
         this.inputText = inputText;
         this.defaultValue = defaultValue;
         this.value = defaultValue;
@@ -64,20 +85,22 @@ export class Option {
 // TODO: validate as a reasonable positive integer, or only let the user enter digits
 export class RoundBlanksOption extends Option {
     /**
-     * Generate the unique input name corresponding to the event ID and round
+     * Generate the ID that corresponds to the given arguments
      *
      * @param {string} eventId - Event ID, e.g. '333'
      * @param {number} round - Round number
-     * @returns {string} - input name, e.g. '333-r1-blanks'
+     * @returns {string} - input name, e.g. 'blanks-round-333-r1'
      */
-    static getInputName(eventId, round) {
-        return `${eventId}-r${round}-blanks`;
+    static genId(eventId, round) {
+        return `blanks-round-${eventId}-r${round}`;
     }
 
     // TODO: use human-readable event names
     // TODO: use human-readable rounds, e.g. 'Final'... we'll need the WCIF for this :)
     /**
      * Generate input text for the event ID and round
+     *
+     * Overrides parent method
      *
      * @param {string} eventId - Event ID, e.g. '333'
      * @param {number} round - Round number
@@ -93,13 +116,13 @@ export class RoundBlanksOption extends Option {
      * @param {number} defaultValue - Default number of blank scorecards
      */
     constructor(eventId, round, defaultValue) {
-        const inputName = RoundBlanksOption.getInputName(eventId, round);
         const inputText = RoundBlanksOption.getInputText(eventId, round);
+        const id = RoundBlanksOption.genId(eventId, round);
 
         super(
             'text',
-            inputName,
             inputText,
+            id,
             defaultValue,
         );
     }

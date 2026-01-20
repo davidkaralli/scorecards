@@ -234,20 +234,19 @@ function getScDataForGroup(wcif, eventId, round, actId) {
  * Generate a list of SCData objects for a round
  *
  * @param {WCIF} wcif - WCIF object
- * @param {Option[]} options - array of Option objects
+ * @param {*} optionsObj - object mapping Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  * @param {number} round - Round number
  * @returns {SCData[]}
  */
-export function getScDataForRound(wcif, options, eventId, round) {
+export function getScDataForRound(wcif, optionsObj, eventId, round) {
     /* Non-blank (competitor-specific) scorecards */
     const scDataArr =
         wcif.getGroupActIds(eventId, round)
         .flatMap(actId => getScDataForGroup(wcif, eventId, round, actId));
 
     /* Add blank scorecards */
-    const numBlanks = 4 + (4 - (scDataArr.length % 4));
-    scDataArr.push(...getScDataForRoundBlank(wcif, options, eventId, round));
+    scDataArr.push(...getScDataForRoundBlanks(wcif, optionsObj, eventId, round));
 
     return scDataArr;
 }
@@ -256,17 +255,17 @@ export function getScDataForRound(wcif, options, eventId, round) {
  * Generate a list of SCData objects for an event
  *
  * @param {WCIF} wcif - WCIF object
- * @param {Option[]} options - array of option objects
+ * @param {*} optionsObj - object mapping Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  * @returns {SCData[]}
  */
-export function getScDataForEvent(wcif, options, eventId) {
+export function getScDataForEvent(wcif, optionsObj, eventId) {
     const numRounds = wcif.getNumRounds(eventId);
 
     let scDataArr = [];
 
     for (let round = 1; round <= numRounds; round++) {
-        scDataArr = scDataArr.concat(getScDataForRound(wcif, options, eventId, round));
+        scDataArr = scDataArr.concat(getScDataForRound(wcif, optionsObj, eventId, round));
     }
 
     return scDataArr;
@@ -283,17 +282,16 @@ function getScDataForFormatBlanks(format) {
  * Generate a list of SCData objects representing blank scorecards for a round
  *
  * @param {WCIF} wcif - WCIF object
- * @param {Option[]} options - array of Option objects
+ * @param {*} optionsObj - object mapping Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  * @param {number} round - Round number
  * @returns {SCData[]}
  */
-export function getScDataForRoundBlank(wcif, options, eventId, round) {
-    const numBlanksStr = options
-        .find(x => x.inputName === RoundBlanksOption.getInputName(eventId, round))
-        .value;
+export function getScDataForRoundBlanks(wcif, optionsObj, eventId, round) {
+    const id = RoundBlanksOption.genId(eventId, round);
+    const option = optionsObj[id];
 
-    return Array(Number(numBlanksStr))
+    return Array(Number(option.value))
         .fill(
             SCData.roundBlankScData(wcif, eventId, round)
         );
