@@ -454,12 +454,12 @@ export class SCPDFData {
  * Generate a list of SCPDFData objects for an event
  *
  * @param {WCIF} wcif - WCIF object
- * @param {Option[]} options - array of option objects
+ * @param {*} optionsObj - object mapping Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  * @returns {SCPDFData[]}
  */
-export function getScPdfDataForEvent(wcif, options, eventId) {
-    return getScDataForEvent(wcif, options, eventId)
+export function getScPdfDataForEvent(wcif, optionsObj, eventId) {
+    return getScDataForEvent(wcif, optionsObj, eventId)
             .map(SCPDFData.fromScData);
 }
 
@@ -1240,11 +1240,11 @@ function draw4Scorecards(doc, scPdfSubset) {
  * Generate a scorecard PDF for the given event
  *
  * @param {WCIF} wcif - WCIF object
- * @param {Option[]} options - array of option objects
+ * @param {*} optionsObj - object mapping Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  */
-function genScPdfEvent(wcif, options, eventId) {
-    const scPdfArr = getScPdfDataForEvent(wcif, options, eventId);
+function genScPdfEvent(wcif, optionsObj, eventId) {
+    const scPdfArr = getScPdfDataForEvent(wcif, optionsObj, eventId);
 
     /* TODO: move this to its own function */
     const pdfFormat = 'letter';
@@ -1277,13 +1277,11 @@ function genScPdfEvent(wcif, options, eventId) {
  * Generate scorecard PDFs for all events for the given WCIF
  *
  * @param {WCIF} wcif - WCIF object
- * @param {OptionsTab[]} optionsTabs - array of OptionsTab objects
+ * @param {*} optionsObj - object mapping Option IDs to Option objects
  */
-export function genScPdfsFromWcif(wcif, optionsTabs) {
-    const options = optionsTabs.flatMap(x => x.options);
-
+export function genScPdfsFromWcif(wcif, optionsObj) {
     for (const eventId of wcif.getEventIds()) {
-        genScPdfEvent(wcif, options, eventId);
+        genScPdfEvent(wcif, optionsObj, eventId);
     }
 }
 
@@ -1291,11 +1289,11 @@ export function genScPdfsFromWcif(wcif, optionsTabs) {
  * Generate scorecard PDFs for all events for the given competition ID
  *
  * @param {compId} - Competition ID, e.g. WesternChampionship2026
- * @param {Option[]} options - array of option objects
+ * @param {*} optionsObj - object mapping Option IDs to Option objects
  */
 // TODO: unused?
-export async function genScPdfs(compId, options) {
+export async function genScPdfs(compId, optionsObj) {
     const wcif = await WCIF.fromCompId(compId);
 
-    genScPdfsFromWcif(wcif, options);
+    genScPdfsFromWcif(wcif, optionsObj);
 }

@@ -114,7 +114,7 @@ async function compIdToOptions(event) {
 
             const input = document.createElement('input');
             input.type = option.inputType;
-            input.name = option.inputName;
+            input.name = option.getId();
             input.defaultValue = option.defaultValue;
             input.classList.add('option-input');
             // TODO: needs to be determined on an option-by-option basis, obviously
@@ -152,7 +152,21 @@ async function compIdToOptions(event) {
 function optionsToPdf(event) {
     event.preventDefault();
 
-    genScPdfsFromWcif(wcif, optionsTabArr);
+    const options = optionsTabArr.flatMap(x => x.options);
+    const optionsObj = {};
+
+    const formData = new FormData(optionsForm);
+
+    for (const option of options) {
+        const id = option.getId();
+
+        option.value =
+            formData.get(id);
+
+        optionsObj[id] = option;
+    }
+
+    genScPdfsFromWcif(wcif, optionsObj);
 }
 
 function optionsToCompId(event) {
@@ -161,7 +175,6 @@ function optionsToCompId(event) {
 
     compIdForm.classList.remove('form--hidden');
     optionsForm.classList.add('form--hidden');
-
 }
 
 /**
@@ -184,7 +197,6 @@ function displayOptionsTab(event, optionsTabArr, tabContentId, tabButtonName) {
     let tabButtonDiv = document.getElementById(tabButtonDivId);
     for (const child of tabButtonDiv.children) {
         if (child.name === tabButtonName) {
-            // TODO: better style
             child.classList.add('options-tab-btn--active');
         } else {
             child.classList.remove('options-tab-btn--active');
