@@ -25,6 +25,11 @@ export class CumulRoundInfo {
      * @type {string}
      */
     eventId;
+    /**
+     * Human-readable event name, e.g. '3x3x3 Cube'
+     * @type {string}
+     */
+    eventName;
     /** @type {number} */
     round;
     /**
@@ -40,6 +45,7 @@ export class CumulRoundInfo {
      */
     constructor(wcif, roundId) {
         this.eventId = WCIF.getEventIdFromRoundId(roundId);
+        this.eventName = WCIF.eventIdToName[this.eventId];
         this.round = WCIF.getRoundFromRoundId(roundId);
         this.numRounds = wcif.getNumRounds(this.eventId)
     }
@@ -74,6 +80,11 @@ export class SCData {
      * @type {string}
      */
     eventId;
+    /**
+     * Human-readable event name, e.g. '3x3x3 Cube'
+     * @type {string}
+     */
+    eventName;
     /** @type {number} */
     round;
     /**
@@ -149,6 +160,7 @@ export class SCData {
 
         /* Event data */
         scData.eventId = eventId;
+        scData.eventName = WCIF.eventIdToName[eventId];
         scData.round = round;
         scData.numRounds = wcif.getNumRounds(eventId);
         scData.format = wcif.getFormat(eventId, round);
