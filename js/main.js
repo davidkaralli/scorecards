@@ -65,7 +65,7 @@ async function compIdToOptions(event) {
     backButton.addEventListener('click', optionsToCompId);
 
     const genButton = document.createElement('button');
-    genButton.type = 'submit';
+    genButton.type = 'button';
     genButton.textContent = 'Download scorecards';
     genButton.classList.add('options-form-nav-btn');
     genButton.classList.add('options-form-gen-btn');
@@ -150,8 +150,6 @@ async function compIdToOptions(event) {
 }
 
 function optionsToPdf(event) {
-    event.preventDefault();
-
     const options = optionsTabArr.flatMap(x => x.options);
     const optionsObj = {};
 
