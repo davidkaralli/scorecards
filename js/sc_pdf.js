@@ -429,7 +429,7 @@ export class SCPDFData {
  * Generate a list of SCPDFData objects for an event
  *
  * @param {WCIF} wcif - WCIF object
- * @param {*} optionsObj - object mapping Option IDs to Option objects
+ * @param {Object<string, Option>} optionsObj - Map-like object that maps Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  * @returns {SCPDFData[]}
  */
@@ -1215,7 +1215,7 @@ function draw4Scorecards(doc, scPdfSubset) {
  * Generate a scorecard PDF for the given event
  *
  * @param {WCIF} wcif - WCIF object
- * @param {*} optionsObj - object mapping Option IDs to Option objects
+ * @param {Object<string, Option>} optionsObj - Map-like object that maps Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  */
 function genScPdfEvent(wcif, optionsObj, eventId) {
@@ -1252,7 +1252,7 @@ function genScPdfEvent(wcif, optionsObj, eventId) {
  * Generate scorecard PDFs for all events for the given WCIF
  *
  * @param {WCIF} wcif - WCIF object
- * @param {*} optionsObj - object mapping Option IDs to Option objects
+ * @param {Object<string, Option>} optionsObj - Map-like object that maps Option IDs to Option objects
  */
 export function genScPdfsFromWcif(wcif, optionsObj) {
     for (const eventId of wcif.getEventIds()) {
@@ -1264,7 +1264,7 @@ export function genScPdfsFromWcif(wcif, optionsObj) {
  * Generate scorecard PDFs for all events for the given competition ID
  *
  * @param {compId} - Competition ID, e.g. WesternChampionship2026
- * @param {*} optionsObj - object mapping Option IDs to Option objects
+ * @param {Object<string, Option>} optionsObj - Map-like object that maps Option IDs to Option objects
  */
 // TODO: unused?
 export async function genScPdfs(compId, optionsObj) {
