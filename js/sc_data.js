@@ -202,6 +202,7 @@ export class SCData {
 
         /* Event data */
         scData.eventId = eventId;
+        scData.eventName = WCIF.eventIdToName[eventId];
         scData.round = round;
         scData.numRounds = wcif.getNumRounds(eventId);
         scData.format = wcif.getFormat(eventId, round);
