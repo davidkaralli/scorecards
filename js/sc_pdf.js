@@ -1245,7 +1245,8 @@ function genScPdfEvent(wcif, optionsObj, eventId) {
         draw4Scorecards(doc, scPdfSubset);
     }
 
-    doc.save(`${wcif.compId}_${eventId}.pdf`);
+    const eventName = WCIF.eventIdToName[eventId].replaceAll(' ', '_');
+    doc.save(`${wcif.compId}_${eventName}.pdf`);
 }
 
 /**
