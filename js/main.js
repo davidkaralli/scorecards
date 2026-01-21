@@ -93,7 +93,6 @@ async function compIdToOptions(event) {
         const tabContentDiv = document.createElement('div');
         tabContentDiv.id = optionsTab.getTabContentId();
 
-        console.log(tabContentDiv);
         tabContentDiv.classList.add('tab-content');
         // TODO: is this the best way to do this? i.e. can we just index into an array
         if (firstTab) {
