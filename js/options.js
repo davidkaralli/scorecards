@@ -235,13 +235,28 @@ function getBlanksPerRound(wcif) {
     return blanksPerRound;
 }
 
-// TODO: remove export
+// TODO: fill this out
 /**
  * TODO: description
  * @param {WCIF} wcif - WCIF object
  * @returns {OptionsTab} OptionsTab object
  */
-export function optTabBlanks(wcif) {
+function optTabHelp(wcif) {
+    const optionsTab = new OptionsTab(
+        'Help',
+        'help',
+        'Click a tab to start customizing your scorecards. Once you\'re ready, click the "Download scorecards" button above.',
+    );
+
+    return optionsTab;
+}
+
+/**
+ * TODO: description
+ * @param {WCIF} wcif - WCIF object
+ * @returns {OptionsTab} OptionsTab object
+ */
+function optTabBlanks(wcif) {
     const optionsTab = new OptionsTab(
         'Blank scorecards',
         'numBlanks',
@@ -261,7 +276,7 @@ export function optTabBlanks(wcif) {
     return optionsTab;
 }
 
-export function optTabTest(wcif) {
+function optTabTest(wcif) {
     const optionsTab = new OptionsTab(
         'Test tab',
         'test',
@@ -284,6 +299,7 @@ export function optTabsCreate(wcif) {
     const funcs = [
 //        optRoomAbbrs,
 //        optScGrouping,
+        optTabHelp,
         optTabBlanks,
         optTabTest,
     ];
