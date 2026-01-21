@@ -39,7 +39,7 @@ body {
 
 .options-form-nav-btn {
     margin-bottom: 5px;
-    padding: 10px;
+    padding: 12px;
     font-weight: bold;
     border: 1.5px solid;
     border-radius: 15px;
@@ -55,7 +55,7 @@ body {
 }
 
 .options-form-nav-btn:hover {
-    background-color: #000090;
+    background-color: #202090;
     cursor: pointer;
 
     transition:
@@ -65,23 +65,24 @@ body {
 }
 
 .options-form-gen-btn {
-    background-color: #add8e6;
+    background-color: #6ac5fe;
     color: #000000;
 
     transition:
-        color 100ms ease-in-out,
-        background-color 100ms ease-in-out,
-        border-color 100ms ease-in-out;
+        color 150ms ease-in-out,
+        background-color 150ms ease-in-out,
+        border-color 150ms ease-in-out;
 }
 
 .options-form-gen-btn:hover {
-    background-color: #86c5d8;
     cursor: pointer;
+    background-color: #8ae5fe;
+    color: #000000;
 
     transition:
-        color 100ms ease-in-out,
-        background-color 100ms ease-in-out,
-        border-color 100ms ease-in-out;
+        color 150ms ease-in-out,
+        background-color 150ms ease-in-out,
+        border-color 150ms ease-in-out;
 }
 
 /* TODO: naming scheme is terrible; rename for more precision */
