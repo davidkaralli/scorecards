@@ -1078,14 +1078,70 @@ function pdfWriteExtrasHeader(doc, scPdfData, x, y) {
  * @returns {number} - amount to update the vertical write position by (TODO: poorly worded)
  */
 function pdfAddExtraAttempts(doc, scPdfData, x, y) {
-    return pdfAddAttempts(
-        doc,
-        x,
-        y,
-        1,
-        2,
-        true,
+    const body = [];
+    let attemptText;
+    for (let i = 1; i <= 2; i++) {
+        attemptText = `E${i}`;
+        body.push([attemptText,
+            '',
+            '',
+            'D',
+            '',
+            '',
+        ]);
+    }
+
+    const extraColWidths = [25, 25, 141, 25, 25, 25];
+
+    // TODO: make this a function
+    const columnStyles = {};
+    for (let i = 0; i < extraColWidths.length; i++) {
+        columnStyles[i] = { cellWidth: extraColWidths[i] };
+    }
+
+    // Make the delegate signature spot light gray
+    columnStyles[3].textColor = [ 211, 211, 211 ];
+    columnStyles[3].fontSize = 14;
+
+    // Total sum of extraColWidths
+    // TODO: make this a function
+    const tableWidth = extraColWidths.reduce(
+        (sum, x) => sum + x
     );
+
+    const leftMargin = (doc.internal.pageSize.getWidth() / 2 - tableWidth) / 2;
+
+    doc.autoTable({
+        startY: y,
+        margin: {
+            top: 0,
+            bottom: 0,
+            left: x + leftMargin,
+            right: 0,
+        },
+        body: body,
+        theme: 'grid',
+
+        columnStyles: columnStyles,
+
+        styles: {
+            font: 'OpenSans',
+            fontSize: attemptFontSize,
+            fontStyle: 'bold',
+            textColor: [0, 0, 0], // black text
+            lineColor: [0, 0, 0], // black lines
+            lineWidth: attemptLineWidth,
+            halign: 'center',
+            valign: 'middle',
+            cellPadding: attemptCellPadding,
+        },
+
+        // Suppress spurious warning:
+        // 'Of the table content, x units width could not fit page'
+        tableWidth: 'wrap',
+    })
+
+    return doc.lastAutoTable.finalY - doc.lastAutoTable.settings.startY;
 }
 
 /**
