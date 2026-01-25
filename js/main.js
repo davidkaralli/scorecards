@@ -29,6 +29,7 @@ async function compIdToOptions(event) {
     formError.textContent = '';
     formError.hidden = true;
     compIdInput.style.backgroundColor = '';
+    compIdInput.style.color = 'white';
 
     const scFormData = new FormData(event.target);
 
@@ -44,6 +45,7 @@ async function compIdToOptions(event) {
             formError.textContent = 'Could not get competition data. Are you sure the competition ID is correct?';
             formError.hidden = false;
             compIdInput.style.backgroundColor = '#ffcccb';
+            compIdInput.style.color = 'black';
             // TODO: clear the error on the next submission
         } else {
             // TODO: more generic error
