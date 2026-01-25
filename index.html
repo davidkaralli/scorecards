@@ -8,19 +8,27 @@
 
 <body>
     <form class="form" id="compIdForm">
-        <p>
-            <label>
-                Competition ID:
-                <input type="text" name="compId" />
-            </label>
-        </p>
+        <h2>Welcome to David's Scorecardinator!</h2>
+        <div>A tool for generating customized scorecards for WCA competitions</div>
+        <div>by <b><a href=https://www.worldcubeassociation.org/persons/2020KARA01>David Karalli</a></b></div>
+        <p></p>
+            <div><b>Paste your competition's ID here:</b></div>
+            <label><input type="text" name="compId" class="comp-id-input"/></label>
+        <!-- TODO: move "style" to CSS using "error class". also don't let the next button move!!!! also spacing around the next button -->
+        <div id="formError" style='color: red' class="error" hidden></div>
         <div class="button">
-            <button type="submit">Next</button>
+            <button type="submit" class="options-form-nav-btn">Next</button>
         </div>
         <p></p>
-        <!-- TODO: move "style" to CSS using "error class" -->
-        <div id="formError" style='color: red' class="error" hidden></div>
+        <details>
+            <summary style="text-align:center;" class>How do I find my competition's ID?</summary>
+            <div class="tab-content">
+            <p class="options-tab-description">You can copy and paste the ID from the end of the URL for the competition's webpage. For example, the competition ID below is BayAreaSideEventsDay2025:</p>
+            <img src="./img/comp_id_example.png" class="comp-id-img">
+            </div>
+        </details>
     </form>
+    <!-- TODO: add competition title with link to website -->
     <form class="form form--hidden" id="optionsForm">
         <h2>Options</h2>
     </form>
