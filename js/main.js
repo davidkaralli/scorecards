@@ -92,47 +92,21 @@ async function compIdToOptions(event) {
 
     let firstTab = true;
     for (const optionsTab of optionsTabArr) {
-        const tabContentDiv = document.createElement('div');
-        tabContentDiv.id = optionsTab.getTabContentId();
-
-        tabContentDiv.classList.add('tab-content');
         // TODO: is this the best way to do this? i.e. can we just index into an array
         if (firstTab) {
             firstTab = false;
         } else {
-            tabContentDiv.classList.add('tab-content--hidden');
+            optionsTab.div.classList.add('tab-content--hidden');
         }
 
-        const desc = document.createElement('p');
-        desc.textContent = optionsTab.desc;
-        desc.classList.add('options-tab-description');
-        tabContentDiv.appendChild(desc);
-
-        // Add options (i.e. the content of the tab)
-        for (const option of optionsTab.options) {
-            const p = document.createElement('p');
-            tabContentDiv.appendChild(p);
-
-            const input = document.createElement('input');
-            input.type = option.inputType;
-            input.name = option.getId();
-            input.defaultValue = option.defaultValue;
-            input.classList.add('option-input');
-
-            const label = document.createElement('label');
-            label.textContent = option.inputText;
-            label.classList.add('option')
-            label.appendChild(input);
-            tabContentDiv.appendChild(label);
-        }
-
-        tabContainer.appendChild(tabContentDiv);
+        console.log(optionsTab.tabName);
+        tabContainer.appendChild(optionsTab.div);
 
         // Create a button for the tab
         const button = document.createElement('button');
         button.type = 'button';
         button.name = optionsTab.getTabButtonName();
-        button.textContent = optionsTab.buttonText;
+        button.textContent = optionsTab.tabName;
         button.addEventListener('click', (event) =>
             displayOptionsTab(event, optionsTabArr, optionsTab.getTabContentId(), optionsTab.getTabButtonName())
         );

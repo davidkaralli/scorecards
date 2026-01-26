@@ -24,12 +24,6 @@ export class Option {
      */
     #id;
 
-    /**
-     * Human-readable text describing the input, e.g. 'Number of blanks for 3x3 Round 1'
-     * @type {string}
-     */
-    inputText;
-
     // TODO: will need to change this for radio buttons
     /**
      * Default value of the input
@@ -53,7 +47,7 @@ export class Option {
      * @param  {...any} args 
      */
     static genId(...args) {
-        throw new Error(`Called getOptionId on generic Option object. Args: ${args}`);
+        throw new Error(`Called genId on generic Option object. Args: ${args}`);
     }
 
     /**
@@ -68,14 +62,12 @@ export class Option {
     /**
      * TODO: comment
      * @param {string} inputType
-     * @param {string} inputText
      * @param {string} id
      * @param {string} defaultValue
      */
-    constructor(inputType, inputText, id, defaultValue) {
+    constructor(inputType, id, defaultValue) {
         this.inputType = inputType;
         this.#id = id;
-        this.inputText = inputText;
         this.defaultValue = defaultValue;
         this.value = defaultValue;
     }
@@ -117,12 +109,10 @@ export class RoundBlanksOption extends Option {
      * @param {number} defaultValue - Default number of blank scorecards
      */
     constructor(eventId, round, defaultValue) {
-        const inputText = RoundBlanksOption.getInputText(eventId, round);
         const id = RoundBlanksOption.genId(eventId, round);
 
         super(
             'number',
-            inputText,
             id,
             defaultValue,
         );
@@ -131,7 +121,7 @@ export class RoundBlanksOption extends Option {
 
 export class OptionsTab {
     /** @type {string} */
-    buttonText;
+    tabName;
 
     /** @type {string} */
     #tabContentId;
@@ -146,7 +136,21 @@ export class OptionsTab {
      * Description to show up at the top of the tab's content
      * @type {string}
      */
+    // TODO: delete? maybe this should be part of the div
     desc;
+
+    /**
+     * HTML content of the tab
+     * @type {HTMLElement}
+     */
+    div;
+
+    /**
+     * Generate the HTML content for the tab. Must be overridden by child class.
+     */
+    #finishDiv() {
+        throw new Error(`Called createDiv on generic Option object. Args: ${args}`);
+    }
 
     /**
      * Add an Option object to the array of options
@@ -165,18 +169,148 @@ export class OptionsTab {
         return this.#tabButtonName;
     }
 
+    // TODO: throw error if trying to create an OptionsTab? to enforce an abstract base class
     /**
      * TODO: comment
-     * @param {string} buttonText - text to display on the button for the tab
+     * @param {string} tabName - text to display on the button for the tab
      * @param {string} id - unique ID for identifying the div for the tab's content
      * @param {string} desc - description to show up at the top of the tab's content
      */
-    constructor(buttonText, id, desc) {
-        this.buttonText = buttonText;
+    constructor(tabName, id, desc) {
+        this.tabName = tabName;
         this.#tabContentId = `optionsTab-content-${id}`;
         this.#tabButtonName = `optionsTab-button-${id}`;
         this.options = [];
         this.desc = desc;
+
+        // Start creating the div
+        this.div = document.createElement('div');
+
+        this.div.id = this.#tabContentId;
+        this.div.classList.add('tab-content');
+
+        // Add description text to the div
+        const descHtml = document.createElement('p');
+        descHtml.textContent = this.desc;
+        descHtml.classList.add('options-tab-description');
+        this.div.appendChild(descHtml);
+    }
+}
+
+class BlanksOptionsTab extends OptionsTab {
+    /** WCIF object
+     * @type {WCIF}
+     */
+    wcif;
+
+    /**
+     * Finish generating the HTML content for the tab
+     */
+    #finishDiv(wcif) {
+        const numBlanksObj = getBlanksPerRound(wcif);
+
+        // Create the table
+        // TODO: make it look pretty; add lines
+        // TODO: table body shouldn't be bold
+        const table = document.createElement('table');
+        table.classList.add('options-table');
+
+        // Create the table header
+        const thead = document.createElement('thead');
+
+        // TODO: clean this up
+        let tr;
+        let th;
+
+        // TODO: use short event names for better UI?
+        tr = document.createElement('tr');
+        th = document.createElement('th');
+        th.classList.add('options-table');
+        th.textContent = "Event";
+        tr.appendChild(th);
+
+        th = document.createElement('th');
+        th.textContent = "Round";
+        tr.appendChild(th);
+
+        th = document.createElement('th');
+        // TODO: to avoid the user shooting themselves in the foot, ask for *pages* of blank scorecards
+        th.textContent = "How many blank scorecards?";
+        tr.appendChild(th);
+        thead.appendChild(tr);
+        // TODO: add reset column
+
+        const tbody = document.createElement('tbody');
+        let input;
+        let td;
+
+        tr = document.createElement('tr');
+        const bgClasses = ['odd-row', 'even-row'];
+        const inputClasses = ['odd-row-input', 'even-row-input'];
+        let rowClassesInd = 0;
+
+        let firstRow = true;
+        for (const eventId of Object.keys(numBlanksObj)) {
+            const eventDict = numBlanksObj[eventId];
+
+            td = document.createElement('td');
+            td.textContent = WCIF.eventIdToName[eventId];
+            td.rowSpan = Object.keys(eventDict).length;
+            tr.appendChild(td);
+
+            for (const round of Object.keys(eventDict)) {
+                // Create option object
+                const defaultValue = eventDict[round];
+                const option = new RoundBlanksOption(eventId, round, defaultValue);
+                this.addOption(option);
+
+                // Finish table row
+                tr.classList.add(bgClasses[rowClassesInd]);
+
+                td = document.createElement('td');
+                td.textContent = round;
+                tr.appendChild(td);
+
+                td = document.createElement('td');
+                input = document.createElement('input');
+                input.type = option.inputType;
+                input.name = option.getId();
+                input.defaultValue = option.defaultValue;
+                input.min = 0;
+                input.classList.add('option-input');
+                input.classList.add(inputClasses[rowClassesInd]);
+                // TODO: add event listener to prevent letters from being pasted
+                td.appendChild(input);
+                tr.appendChild(td);
+
+                tbody.appendChild(tr);
+
+                // Creating the tr element here is odd, but intentional. The first round-specific row needs to be included in the same row as the multi-row event text.
+                tr = document.createElement('tr');
+            }
+
+            rowClassesInd = (rowClassesInd + 1) % (bgClasses.length);
+        }
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        this.div.appendChild(table);
+    }
+
+    /**
+     * TODO: comment
+     * @param {string} tabName - text to display on the button for the tab
+     * @param {string} id - unique ID for identifying the div for the tab's content
+     * @param {string} desc - description to show up at the top of the tab's content
+     * @param {WCIF} wcif - WCIF object
+     */
+    // TODO: add WCIF to OptionsTab parent class?
+    // TODO: define the desc within this object
+    constructor(tabName, id, desc, wcif) {
+        super(tabName, id, desc);
+
+        this.wcif = wcif;
+        this.#finishDiv(wcif);
     }
 }
 
@@ -257,23 +391,12 @@ function optTabHelp(wcif) {
  * @returns {OptionsTab} OptionsTab object
  */
 function optTabBlanks(wcif) {
-    const optionsTab = new OptionsTab(
+    return new BlanksOptionsTab(
         'Blank scorecards',
         'numBlanks',
         'Enter the number of blank scorecards to generate for each round. The default values ensure each page of the PDF has all scorecard slots filled.',
+        wcif,
     );
-
-    const numBlanksObj = getBlanksPerRound(wcif);
-
-    for (const eventId of Object.keys(numBlanksObj)) {
-        const eventDict = numBlanksObj[eventId];
-        for (const round of Object.keys(eventDict)) {
-            const defaultValue = eventDict[round];
-            optionsTab.addOption(new RoundBlanksOption(eventId, round, defaultValue));
-        }
-    }
-
-    return optionsTab;
 }
 
 function optTabTest(wcif) {
@@ -296,6 +419,7 @@ function optTabTest(wcif) {
  * @returns {OptionsTab[]} array of OptionsTab objects
  */
 export function optTabsCreate(wcif) {
+    // TODO: reformat this to use objects?
     const funcs = [
 //        optRoomAbbrs,
 //        optScGrouping,
