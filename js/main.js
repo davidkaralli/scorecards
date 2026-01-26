@@ -118,8 +118,6 @@ async function compIdToOptions(event) {
             input.name = option.getId();
             input.defaultValue = option.defaultValue;
             input.classList.add('option-input');
-            // TODO: needs to be determined on an option-by-option basis, obviously
-            input.type = 'number';
 
             const label = document.createElement('label');
             label.textContent = option.inputText;

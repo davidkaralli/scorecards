@@ -121,7 +121,7 @@ export class RoundBlanksOption extends Option {
         const id = RoundBlanksOption.genId(eventId, round);
 
         super(
-            'text',
+            'number',
             inputText,
             id,
             defaultValue,
