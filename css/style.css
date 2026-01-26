@@ -206,12 +206,51 @@ a:active {
     text-align: left;
 }
 
+table {
+    border: 2.5px solid var(--border-color);
+    border-collapse: separate;
+    border-radius: 10px;
+    border-spacing: 0;
+    overflow: hidden;
+}
+
+th, td {
+    border-top: 1.5px solid var(--border-color);
+    border-right: 1.5px solid var(--border-color);
+    padding: 6px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+tr:first-child th {
+    border-top: none;
+}
+
+td:last-child, th:last-child {
+    border-right: none;
+}
+
+.options-table-group-top {
+    border-top: 5px solid var(--border-color)
+}
+
 .option-input {
     border: 1px solid var(--border-color);
     border-radius: 5px;
-    padding: 5px;
-    background-color: var(--bg-color);
+    padding: 3px;
+    padding-left: 4.5px;
+    background-color: #000038;
     color: white;
     text-align: left;
-    max-width: 60px;
+    max-width: 45px;
 }
+
+.odd-row {
+    background-color: #000040;
+}
+
+.odd-row-input {
+    background-color: #000038;
+}
+
+/* TODO: implement even-row class */
