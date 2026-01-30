@@ -207,7 +207,7 @@ class BlanksOptionsTab extends OptionsTab {
      * Finish generating the HTML content for the tab
      */
     #finishDiv(wcif) {
-        const numBlanksObj = getBlanksPerRound(wcif);
+        const numBlanksObj = getBlankPagesPerRound(wcif);
 
         // Create the table
         // TODO: make it look pretty; add lines
@@ -235,7 +235,7 @@ class BlanksOptionsTab extends OptionsTab {
 
         th = document.createElement('th');
         // TODO: to avoid the user shooting themselves in the foot, ask for *pages* of blank scorecards
-        th.textContent = "How many blank scorecards?";
+        th.textContent = "Pages";
         tr.appendChild(th);
         thead.appendChild(tr);
         // TODO: add reset column
@@ -318,19 +318,18 @@ class BlanksOptionsTab extends OptionsTab {
  * @param {number} round - Round number
  * @returns {number} - number of blanks for the round
  */
-function getNumBlanksForRound(wcif, eventId, round) {
-    const numCompetitors = wcif.getNumAdvancingToRound(eventId, round);
-
-    // Fill in the final page with blanks, and add 1 page of blanks
-    const numExtraBlanks = (4 * Math.ceil((numCompetitors + 4) / 4)) - numCompetitors;
-
-    // If groups are already assigned, just add some emergency blanks
+function getBlankPagesForRound(wcif, eventId, round) {
+    // If groups are already assigned, just add a page of emergency blank scorecards
     if (wcif.groupsAreAssigned(eventId, round)) {
-        return numExtraBlanks;
+        return 1;
     }
 
-    // If groups aren't already assigned, provide scorecards for filling in at the competition
-    return numCompetitors + numExtraBlanks;
+    // If groups aren't already assigned, provide scorecards for filling in at the competition,
+    // plus one page of extra blank scorecards
+    const numCompetitors = wcif.getNumAdvancingToRound(eventId, round);
+    const scPerPage = 4;
+
+    return (numCompetitors / scPerPage) + 1;
 }
 
 /**
@@ -339,13 +338,13 @@ function getNumBlanksForRound(wcif, eventId, round) {
  * @param {string} eventId - Event ID, e.g. '333'
  * @returns {Object} - TODO: describe; format is object['333'][1] = 5
  */
-function getBlanksPerRoundByEvent(wcif, eventId) {
+function getBlankPagesPerRoundByEvent(wcif, eventId) {
     const numRounds = wcif.getNumRounds(eventId);
 
     const blanksPerRound = {};
 
     for (let round = 1; round <= numRounds; round++) {
-        blanksPerRound[round] = getNumBlanksForRound(wcif, eventId, round);
+        blanksPerRound[round] = getBlankPagesForRound(wcif, eventId, round);
     }
 
     return blanksPerRound;
@@ -356,11 +355,11 @@ function getBlanksPerRoundByEvent(wcif, eventId) {
  * @param {WCIF} wcif - WCIF object
  * @returns {Object} - TODO: describe; format is object['333'][1] = 5
  */
-function getBlanksPerRound(wcif) {
+function getBlankPagesPerRound(wcif) {
     let blanksPerRound = {};
 
     for (const eventId of wcif.getEventIds()) {
-        blanksPerRound[eventId] = getBlanksPerRoundByEvent(wcif, eventId);
+        blanksPerRound[eventId] = getBlankPagesPerRoundByEvent(wcif, eventId);
     }
 
     return blanksPerRound;
@@ -391,7 +390,7 @@ function optTabBlanks(wcif) {
     return new BlanksOptionsTab(
         'Blank scorecards',
         'numBlanks',
-        'Enter the number of blank scorecards to generate for each round. The default values ensure each page of the PDF has all scorecard slots filled.',
+        'Enter the number of pages of blank scorecards to generate for each round.',
         wcif,
     );
 }
