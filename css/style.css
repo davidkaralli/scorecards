@@ -236,11 +236,12 @@ td:last-child, th:last-child {
 
 .option-input {
     border: 1px solid var(--border-color);
-    border-radius: 5px;
+    border-radius: 10px;
     padding: 3px;
-    padding-left: 4.5px;
+    padding-left: 6px;
     background-color: #000038;
     color: white;
+    border-color: #707080;
     text-align: left;
     max-width: 45px;
 }
