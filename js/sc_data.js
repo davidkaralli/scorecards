@@ -303,8 +303,23 @@ function getScDataForFormatBlanks(format) {
 export function getScDataForRoundBlanks(wcif, optionsObj, eventId, round) {
     const id = RoundBlanksOption.genId(eventId, round);
     const option = optionsObj[id];
+    const scPerPage = 4;
 
-    return Array(Number(option.value))
+    // Blanks to fill in the remaining entries of a page, if applicable
+    let numFillerBlanks;
+    if (wcif.groupsAreAssigned(eventId, round)) {
+        const numCompetitors = wcif.getNumAdvancingToRound(eventId, round);
+        numFillerBlanks = scPerPage - (numCompetitors % scPerPage);
+    } else {
+        // No groups have been assigned; no need to add filler blanks
+        numFillerBlanks = 0;
+    }
+
+    // TODO: warn when the user doesn't provide enough blanks for a round? e.g. 1 page of blanks for a 12-round final
+    const numBlanks = numFillerBlanks
+        + (option.value * scPerPage);
+
+    return Array(Number(numBlanks))
         .fill(
             SCData.roundBlankScData(wcif, eventId, round)
         );
