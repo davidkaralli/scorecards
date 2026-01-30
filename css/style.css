@@ -250,8 +250,4 @@ td:last-child, th:last-child {
     background-color: #000040;
 }
 
-.odd-row-input {
-    background-color: #000038;
-}
-
 /* TODO: implement even-row class */
