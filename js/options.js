@@ -246,10 +246,8 @@ class BlanksOptionsTab extends OptionsTab {
 
         tr = document.createElement('tr');
         const bgClasses = ['odd-row', 'even-row'];
-        const inputClasses = ['odd-row-input', 'even-row-input'];
         let rowClassesInd = 0;
 
-        let firstRow = true;
         for (const eventId of Object.keys(numBlanksObj)) {
             const eventDict = numBlanksObj[eventId];
 
@@ -278,7 +276,6 @@ class BlanksOptionsTab extends OptionsTab {
                 input.defaultValue = option.defaultValue;
                 input.min = 0;
                 input.classList.add('option-input');
-                input.classList.add(inputClasses[rowClassesInd]);
                 // TODO: add event listener to prevent letters from being pasted
                 td.appendChild(input);
                 tr.appendChild(td);
