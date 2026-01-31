@@ -92,6 +92,30 @@ export class WCIF {
         '333mbf': '3x3x3 Multi-Blind',
     };
 
+    /**
+     * Map-like object that converts event IDs (like '333') to shortened event names (like '3x3')
+     * @type {Object.<string, string>}
+     */
+    static eventIdToShortName = {
+        '333': '3x3',
+        '222': '2x2',
+        '444': '4x4',
+        '555': '5x5',
+        '666': '6x6',
+        '777': '7x7',
+        '333bf': '3x3 Blind',
+        '333fm': 'FMC',
+        '333oh': '3x3 OH',
+        'clock': 'Clock',
+        'minx': 'Megaminx',
+        'pyram': 'Pyraminx',
+        'skewb': 'Skewb',
+        'sq1': 'Square-1',
+        '444bf': '4x4 Blind',
+        '555bf': '5x5 Blind',
+        '333mbf': 'Multi-Blind',
+    };
+
 
    /**
     * Get the JSON object for the given event

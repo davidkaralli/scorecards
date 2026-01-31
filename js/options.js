@@ -284,7 +284,7 @@ class BlanksOptionsTab extends OptionsTab {
             const eventDict = numBlanksObj[eventId];
 
             td = document.createElement('td');
-            td.textContent = WCIF.eventIdToName[eventId];
+            td.textContent = WCIF.eventIdToShortName[eventId];
             td.rowSpan = Object.keys(eventDict).length;
             tr.appendChild(td);
 
