@@ -99,7 +99,6 @@ async function compIdToOptions(event) {
             optionsTab.div.classList.add('tab-content--hidden');
         }
 
-        console.log(optionsTab.tabName);
         tabContainer.appendChild(optionsTab.div);
 
         // Create a button for the tab
