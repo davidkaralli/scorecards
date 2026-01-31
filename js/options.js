@@ -204,6 +204,41 @@ class BlanksOptionsTab extends OptionsTab {
     wcif;
 
     /**
+     * Event listener to prevent the user from pasting '-' or '.'
+     * TODO: jsdoc type
+     * @param {*} event
+     */
+    #beforeinputEventListener(event) {
+        // Don't allow non-digit characters
+        if (event.data && /\D/.test(event.data)) {
+            event.preventDefault();
+        }
+    }
+
+    /**
+     * Create an HTML input element
+     * @param {RoundBlanksOption} option - RoundBlanksOption object
+     * @returns {HTMLInputElement}
+     */
+    #createInput(option) {
+        const input = document.createElement('input');
+
+        input.type = option.inputType;
+        input.name = option.getId();
+
+        input.inputmode = 'numeric';
+        input.defaultValue = option.defaultValue;
+        input.min = 0;
+
+        input.classList.add('option-input');
+
+        input.addEventListener('beforeinput',
+            event => this.#beforeinputEventListener(event));
+
+        return input;
+    }
+
+    /**
      * Finish generating the HTML content for the tab
      */
     #finishDiv(wcif) {
@@ -270,12 +305,7 @@ class BlanksOptionsTab extends OptionsTab {
                 tr.appendChild(td);
 
                 td = document.createElement('td');
-                input = document.createElement('input');
-                input.type = option.inputType;
-                input.name = option.getId();
-                input.defaultValue = option.defaultValue;
-                input.min = 0;
-                input.classList.add('option-input');
+                input = this.#createInput(option);
                 // TODO: add event listener to prevent letters from being pasted
                 td.appendChild(input);
                 tr.appendChild(td);
