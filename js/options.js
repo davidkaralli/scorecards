@@ -245,8 +245,6 @@ class BlanksOptionsTab extends OptionsTab {
         const numBlanksObj = getBlankPagesPerRound(wcif);
 
         // Create the table
-        // TODO: make it look pretty; add lines
-        // TODO: table body shouldn't be bold
         const table = document.createElement('table');
         table.classList.add('options-table');
 
@@ -269,7 +267,6 @@ class BlanksOptionsTab extends OptionsTab {
         tr.appendChild(th);
 
         th = document.createElement('th');
-        // TODO: to avoid the user shooting themselves in the foot, ask for *pages* of blank scorecards
         th.textContent = "Pages";
         tr.appendChild(th);
         thead.appendChild(tr);
