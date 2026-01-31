@@ -422,20 +422,6 @@ function optTabBlanks(wcif) {
     );
 }
 
-function optTabTest(wcif) {
-    const optionsTab = new OptionsTab(
-        'Test tab',
-        'test',
-        'This is a test tab. Type whatever you want.',
-    );
-
-    for (let i = 0; i < 5; i++) {
-        optionsTab.addOption(new Option('text', `test-input-${i}`, `Test text ${i}: `, i));
-    }
-
-    return optionsTab;
-}
-
 /**
  * TODO: description
  * @param {WCIF} wcif - WCIF object
@@ -448,7 +434,6 @@ export function optTabsCreate(wcif) {
 //        optScGrouping,
         optTabHelp,
         optTabBlanks,
-        optTabTest,
     ];
 
     let optionsTabs = [];
