@@ -124,7 +124,7 @@ export class SCData {
     /** @type {string} */
     groupRoom;
     /**
-     * Room abbreviation for the "Group" field of a scorecard. Could be 1 character or empty
+     * Room abbreviation for the "Group" field of a scorecard. Could be empty
      * @type {string} */
     groupRoomAbbr;
 

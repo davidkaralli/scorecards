@@ -376,6 +376,7 @@ class RoomOptionsTab extends OptionsTab {
         input.name = option.getId();
 
         input.defaultValue = option.defaultValue;
+        input.maxLength = 2;
 
         input.classList.add('option-input');
 
@@ -567,7 +568,7 @@ function optTabRooms(wcif) {
     return new RoomOptionsTab(
         'Rooms',
         'roomAbbrs',
-        'Enter a 1-letter abbreviation for each room. This will show up in the "Group" field of a scorecard. If you\'d like, you can leave abbreviations blank.',
+        'Enter an abbreviation (max 2 letters) for each room. This will show up in the "Group" field of a scorecard. If you\'d like, you can leave abbreviations blank.',
         wcif,
     );
 }
