@@ -221,6 +221,22 @@ export class OptionsTab {
     }
 }
 
+class HelpOptionsTab extends OptionsTab {
+    /**
+     * TODO: comment
+     * @param {WCIF} wcif - WCIF object
+     */
+    constructor(wcif) {
+        const tabName = 'Help';
+        const id = 'helpOptions';
+        const desc = 'Click a tab to start customizing your scorecards. ' +
+            'Once you\'re ready, click the "Download scorecards" button above.';
+
+        super(tabName, id, desc, wcif);
+    }
+
+}
+
 class BlanksOptionsTab extends OptionsTab {
     /**
      * Event listener to prevent the user from pasting '-' or '.'
@@ -468,22 +484,6 @@ class RoomOptionsTab extends OptionsTab {
 
         this.#finishDiv(wcif);
     }
-}
-
-class HelpOptionsTab extends OptionsTab {
-    /**
-     * TODO: comment
-     * @param {WCIF} wcif - WCIF object
-     */
-    constructor(wcif) {
-        const tabName = 'Help';
-        const id = 'helpOptions';
-        const desc = 'Click a tab to start customizing your scorecards. ' +
-            'Once you\'re ready, click the "Download scorecards" button above.';
-
-        super(tabName, id, desc, wcif);
-    }
-
 }
 
 /**
