@@ -255,7 +255,6 @@ class BlanksOptionsTab extends OptionsTab {
         let tr;
         let th;
 
-        // TODO: use short event names for better UI?
         tr = document.createElement('tr');
         th = document.createElement('th');
         th.classList.add('options-table');
