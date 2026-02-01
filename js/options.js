@@ -113,7 +113,7 @@ export class RoomOption extends Option {
      */
     static genId(room) {
         const roomNoSpaces = room.replace(' ', '-');
-        return `room-abbr-${roomNoSpaces}`;;
+        return `room-abbr-${roomNoSpaces}`;
     }
 
     /**
@@ -132,6 +132,11 @@ export class RoomOption extends Option {
 }
 
 export class OptionsTab {
+    /** WCIF object
+     * @type {WCIF}
+     */
+    wcif;
+
     /** @type {string} */
     tabName;
 
@@ -181,14 +186,19 @@ export class OptionsTab {
         return this.#tabButtonName;
     }
 
-    // TODO: throw error if trying to create an OptionsTab? to enforce an abstract base class
     /**
      * TODO: comment
      * @param {string} tabName - text to display on the button for the tab
      * @param {string} id - unique ID for identifying the div for the tab's content
      * @param {string} desc - description to show up at the top of the tab's content
+     * @param {WCIF} wcif - WCIF object
      */
-    constructor(tabName, id, desc) {
+    constructor(tabName, id, desc, wcif) {
+        // Treat OptionsTab as an abstract base class
+        if (new.target === OptionsTab) {
+            throw new Error(`Cannot call OptionsTab constructor directly. tabName is "${tabName}."`)
+        }
+
         this.tabName = tabName;
         this.#tabContentId = `optionsTab-content-${id}`;
         this.#tabButtonName = `optionsTab-button-${id}`;
@@ -206,15 +216,12 @@ export class OptionsTab {
         descHtml.textContent = this.desc;
         descHtml.classList.add('options-tab-description');
         this.div.appendChild(descHtml);
+
+        this.wcif = wcif;
     }
 }
 
 class BlanksOptionsTab extends OptionsTab {
-    /** WCIF object
-     * @type {WCIF}
-     */
-    wcif;
-
     /**
      * Event listener to prevent the user from pasting '-' or '.'
      * TODO: jsdoc type
@@ -334,36 +341,22 @@ class BlanksOptionsTab extends OptionsTab {
 
     /**
      * TODO: comment
-     * @param {string} tabName - text to display on the button for the tab
-     * @param {string} id - unique ID for identifying the div for the tab's content
-     * @param {string} desc - description to show up at the top of the tab's content
      * @param {WCIF} wcif - WCIF object
      */
     // TODO: add WCIF to OptionsTab parent class?
     // TODO: define the desc within this object
-    constructor(tabName, id, desc, wcif) {
-        super(tabName, id, desc);
+    constructor(wcif) {
+        const tabName = 'Blank scorecards';
+        const id = 'numBlanks';
+        const desc = 'Enter the number of pages of blank scorecards to generate for each round.';
 
-        this.wcif = wcif;
+        super(tabName, id, desc, wcif);
+
         this.#finishDiv();
     }
 }
 
 class RoomOptionsTab extends OptionsTab {
-    /** WCIF object
-     * @type {WCIF}
-     */
-    wcif;
-
-    /**
-     * Event listener to prevent the user from pasting '-' or '.'
-     * TODO: jsdoc type
-     * @param {*} event
-     */
-    // TODO: do something with this or delete it
-    #beforeinputEventListener(event) {
-    }
-
     /**
      * Create an HTML input element
      * @param {RoomOption} option - RoomOption object
@@ -460,19 +453,37 @@ class RoomOptionsTab extends OptionsTab {
 
     /**
      * TODO: comment
-     * @param {string} tabName - text to display on the button for the tab
-     * @param {string} id - unique ID for identifying the div for the tab's content
-     * @param {string} desc - description to show up at the top of the tab's content
      * @param {WCIF} wcif - WCIF object
      */
     // TODO: add WCIF to OptionsTab parent class?
     // TODO: define the desc within this object
-    constructor(tabName, id, desc, wcif) {
-        super(tabName, id, desc);
+    constructor(wcif) {
+        const tabName = 'Rooms';
+        const id = 'roomAbbrs';
+        const desc = 'Enter an abbreviation (max 2 letters) for each room. ' +
+            'This will show up in the "Group" field of a scorecard. ' + 
+            'If you\'d like, you can leave abbreviations blank.';
 
-        this.wcif = wcif;
+        super(tabName, id, desc, wcif);
+
         this.#finishDiv(wcif);
     }
+}
+
+class HelpOptionsTab extends OptionsTab {
+    /**
+     * TODO: comment
+     * @param {WCIF} wcif - WCIF object
+     */
+    constructor(wcif) {
+        const tabName = 'Help';
+        const id = 'helpOptions';
+        const desc = 'Click a tab to start customizing your scorecards. ' +
+            'Once you\'re ready, click the "Download scorecards" button above.';
+
+        super(tabName, id, desc, wcif);
+    }
+
 }
 
 /**
@@ -529,69 +540,17 @@ function getBlankPagesPerRound(wcif) {
     return blanksPerRound;
 }
 
-// TODO: fill this out
-/**
- * TODO: description
- * @param {WCIF} wcif - WCIF object
- * @returns {OptionsTab} OptionsTab object
- */
-function optTabHelp(wcif) {
-    const optionsTab = new OptionsTab(
-        'Help',
-        'help',
-        'Click a tab to start customizing your scorecards. Once you\'re ready, click the "Download scorecards" button above.',
-    );
-
-    return optionsTab;
-}
-
-/**
- * TODO: description
- * @param {WCIF} wcif - WCIF object
- * @returns {OptionsTab} OptionsTab object
- */
-function optTabBlanks(wcif) {
-    return new BlanksOptionsTab(
-        'Blank scorecards',
-        'numBlanks',
-        'Enter the number of pages of blank scorecards to generate for each round.',
-        wcif,
-    );
-}
-
-/**
- * TODO: description
- * @param {WCIF} wcif - WCIF object
- * @returns {OptionsTab} OptionsTab object
- */
-function optTabRooms(wcif) {
-    return new RoomOptionsTab(
-        'Rooms',
-        'roomAbbrs',
-        'Enter an abbreviation (max 2 letters) for each room. This will show up in the "Group" field of a scorecard. If you\'d like, you can leave abbreviations blank.',
-        wcif,
-    );
-}
-
 /**
  * TODO: description
  * @param {WCIF} wcif - WCIF object
  * @returns {OptionsTab[]} array of OptionsTab objects
  */
 export function optTabsCreate(wcif) {
-    // TODO: reformat this to use objects?
-    const funcs = [
-//        optScGrouping,
-        optTabHelp,
-        optTabBlanks,
-        optTabRooms,
+    const tabClasses = [
+        HelpOptionsTab,
+        BlanksOptionsTab,
+        RoomOptionsTab,
     ];
 
-    let optionsTabs = [];
-
-    for (const func of funcs) {
-        optionsTabs.push(func(wcif));
-    }
-
-    return optionsTabs;
+    return tabClasses.map(cls => new cls(wcif));
 }
