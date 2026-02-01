@@ -5,7 +5,7 @@
  */
 
 import { WCIF } from './wcif.js';
-import { Option, OptionsTab, RoomOption } from './options.js'
+import { Option } from './options.js'
 import { getScDataForEvent, SCData, CumulRoundInfo, SCType } from './sc_data.js';
 import { jsPDF } from 'jspdf';
 import { applyPlugin } from 'jspdf-autotable';
