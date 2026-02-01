@@ -87,23 +87,6 @@ export class RoundBlanksOption extends Option {
         return `blanks-round-${eventId}-r${round}`;
     }
 
-    // TODO: use human-readable event names
-    // TODO: use human-readable rounds, e.g. 'Final'... we'll need the WCIF for this :)
-    /**
-     * Generate input text for the event ID and round
-     *
-     * Overrides parent method
-     *
-     * @param {string} eventId - Event ID, e.g. '333'
-     * @param {number} round - Round number
-     * @returns {string} - input text, e.g. 'Number of blank scorecards for 333 Round 1:'
-     */
-    // TODO: delete; unused
-    static getInputText(eventId, round) {
-        const eventName = WCIF.eventIdToName[eventId];
-        return `${eventName} Round ${round}: `;
-    }
-
     /**
      * @param {string} eventId - Event ID, e.g. '333'
      * @param {number} round - Round number
