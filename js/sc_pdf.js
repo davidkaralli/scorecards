@@ -5,7 +5,7 @@
  */
 
 import { WCIF } from './wcif.js';
-import { Option, OptionsTab } from './options.js'
+import { Option, OptionsTab, RoomOption } from './options.js'
 import { getScDataForEvent, SCData, CumulRoundInfo, SCType } from './sc_data.js';
 import { jsPDF } from 'jspdf';
 import { applyPlugin } from 'jspdf-autotable';
@@ -370,12 +370,7 @@ export class SCPDFData {
      * @param {SCData} scData - SCData object
      */
     #setGroupData(scData) {
-        let roomText = '';
-
-        if (scData.numRooms !== 1)
-            roomText = scData.groupRoom[0];
-
-        this.group = `${roomText}${scData.groupNum}`;
+        this.group = `${scData.groupRoomAbbr}${scData.groupNum}`;
     }
 
     /**

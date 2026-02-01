@@ -201,6 +201,16 @@ export class WCIF {
    }
 
    /**
+    * Get the names of the rooms from the WCIF JSON
+    *
+    * @returns {string[]} List of room names
+    */
+   getRoomNames() {
+      return this.#getRoomObjs()
+         .map(x => x.name);
+   }
+
+   /**
     * Get the number of rooms in the WCIF JSON
     *
     * @returns {number}

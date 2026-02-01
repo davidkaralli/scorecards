@@ -98,6 +98,7 @@ export class RoundBlanksOption extends Option {
      * @param {number} round - Round number
      * @returns {string} - input text, e.g. 'Number of blank scorecards for 333 Round 1:'
      */
+    // TODO: delete; unused
     static getInputText(eventId, round) {
         const eventName = WCIF.eventIdToName[eventId];
         return `${eventName} Round ${round}: `;
@@ -113,6 +114,34 @@ export class RoundBlanksOption extends Option {
 
         super(
             'number',
+            id,
+            defaultValue,
+        );
+    }
+}
+
+export class RoomOption extends Option {
+    /**
+     * Generate the ID that corresponds to the given arguments
+     *
+     * @param {string} eventId - Event ID, e.g. '333'
+     * @param {number} round - Round number
+     * @returns {string} - input name, e.g. 'blanks-round-333-r1'
+     */
+    static genId(room) {
+        const roomNoSpaces = room.replace(' ', '-');
+        return `room-abbr-${roomNoSpaces}`;;
+    }
+
+    /**
+     * @param {string} room - Room name
+     * @param {number} defaultValue - Default room abbreviation (could be an empty string)
+     */
+    constructor(room, defaultValue) {
+        const id = RoomOption.genId(room);
+
+        super(
+            'text',
             id,
             defaultValue,
         );
@@ -241,8 +270,8 @@ class BlanksOptionsTab extends OptionsTab {
     /**
      * Finish generating the HTML content for the tab
      */
-    #finishDiv(wcif) {
-        const numBlanksObj = getBlankPagesPerRound(wcif);
+    #finishDiv() {
+        const numBlanksObj = getBlankPagesPerRound(this.wcif);
 
         // Create the table
         const table = document.createElement('table');
@@ -311,6 +340,131 @@ class BlanksOptionsTab extends OptionsTab {
                 // Creating the tr element here is odd, but intentional. The first round-specific row needs to be included in the same row as the multi-row event text.
                 tr = document.createElement('tr');
             }
+
+            rowClassesInd = (rowClassesInd + 1) % (bgClasses.length);
+        }
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        this.div.appendChild(table);
+    }
+
+    /**
+     * TODO: comment
+     * @param {string} tabName - text to display on the button for the tab
+     * @param {string} id - unique ID for identifying the div for the tab's content
+     * @param {string} desc - description to show up at the top of the tab's content
+     * @param {WCIF} wcif - WCIF object
+     */
+    // TODO: add WCIF to OptionsTab parent class?
+    // TODO: define the desc within this object
+    constructor(tabName, id, desc, wcif) {
+        super(tabName, id, desc);
+
+        this.wcif = wcif;
+        this.#finishDiv();
+    }
+}
+
+class RoomOptionsTab extends OptionsTab {
+    /** WCIF object
+     * @type {WCIF}
+     */
+    wcif;
+
+    /**
+     * Event listener to prevent the user from pasting '-' or '.'
+     * TODO: jsdoc type
+     * @param {*} event
+     */
+    // TODO: do something with this or delete it
+    #beforeinputEventListener(event) {
+    }
+
+    /**
+     * Create an HTML input element
+     * @param {RoomOption} option - RoomOption object
+     * @returns {HTMLInputElement}
+     */
+    #createInput(option) {
+        const input = document.createElement('input');
+
+        input.type = option.inputType;
+        input.name = option.getId();
+
+        input.defaultValue = option.defaultValue;
+
+        input.classList.add('option-input');
+
+        return input;
+    }
+
+    /**
+     * Finish generating the HTML content for the tab
+     */
+    #finishDiv() {
+        const rooms = this.wcif.getRoomNames();
+
+        // Create the table
+        const table = document.createElement('table');
+        table.classList.add('options-table');
+
+        // Create the table header
+        const thead = document.createElement('thead');
+
+        // TODO: clean this up
+        let tr;
+        let th;
+
+        tr = document.createElement('tr');
+        th = document.createElement('th');
+        th.classList.add('options-table');
+        th.textContent = "Room";
+        tr.appendChild(th);
+
+        th = document.createElement('th');
+        th.textContent = "Abbreviation";
+        tr.appendChild(th);
+
+        thead.append(tr);
+
+        // TODO: add reset column
+
+        const tbody = document.createElement('tbody');
+        let input;
+        let td;
+
+        tr = document.createElement('tr');
+        const bgClasses = ['odd-row', 'even-row'];
+        let rowClassesInd = 0;
+
+        // TODO: support natscript stages, e.g. WesternChampionship2025
+        for (const room of rooms) {
+            let defaultValue;
+            if (rooms.length === 1) {
+                // No need to label the room if there's only one
+                defaultValue = '';
+            } else {
+                defaultValue = room[0].toUpperCase();
+            }
+
+            const option = new RoomOption(room, defaultValue);
+            this.addOption(option);
+
+            // Add table row
+            tr = document.createElement('tr');
+            tr.classList.add(bgClasses[rowClassesInd]);
+
+            td = document.createElement('td');
+            td.textContent = room;
+            tr.appendChild(td);
+
+            td = document.createElement('td');
+            input = this.#createInput(option);
+            td.appendChild(input);
+            tr.appendChild(td);
+
+            tbody.appendChild(tr);
 
             rowClassesInd = (rowClassesInd + 1) % (bgClasses.length);
         }
@@ -424,15 +578,29 @@ function optTabBlanks(wcif) {
 /**
  * TODO: description
  * @param {WCIF} wcif - WCIF object
+ * @returns {OptionsTab} OptionsTab object
+ */
+function optTabRooms(wcif) {
+    return new RoomOptionsTab(
+        'Rooms',
+        'roomAbbrs',
+        'Enter a 1-letter abbreviation for each room. This will show up in the "Group" field of a scorecard. If you\'d like, you can leave abbreviations blank.',
+        wcif,
+    );
+}
+
+/**
+ * TODO: description
+ * @param {WCIF} wcif - WCIF object
  * @returns {OptionsTab[]} array of OptionsTab objects
  */
 export function optTabsCreate(wcif) {
     // TODO: reformat this to use objects?
     const funcs = [
-//        optRoomAbbrs,
 //        optScGrouping,
         optTabHelp,
         optTabBlanks,
+        optTabRooms,
     ];
 
     let optionsTabs = [];

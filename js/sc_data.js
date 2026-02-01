@@ -5,7 +5,7 @@
  */
 
 import { WCIF } from './wcif.js';
-import { Option, RoundBlanksOption } from './options.js'
+import { Option, RoundBlanksOption, RoomOption } from './options.js'
 
 /**
  * Enum for scorecard types
@@ -124,10 +124,9 @@ export class SCData {
     /** @type {string} */
     groupRoom;
     /**
-     * Number of rooms in the WCIF JSON
-     * @type {number}
-     */
-    numRooms;
+     * Room abbreviation for the "Group" field of a scorecard. Could be 1 character or empty
+     * @type {string} */
+    groupRoomAbbr;
 
     /**
      * What kind of scorecard the data is for
@@ -139,13 +138,21 @@ export class SCData {
      * Generate a scorecard for a given competitor (as opposed to a blank scorecard)
      *
      * @param {WCIF} wcif - WCIF object
+     * @param {Object<string, Option>} optionsObj - Map-like object that maps Option IDs to Option objects
      * @param {string} eventId - Event ID, e.g. '333'
      * @param {number} round - Round number
      * @param {number} actId - Activity ID
      * @param {number} registrantId - Registrant ID
      * @returns {SCData}
      */
-    static competitorScData(wcif, eventId, round, actId, registrantId) {
+    static competitorScData(
+        wcif,
+        optionsObj,
+        eventId,
+        round,
+        actId,
+        registrantId,
+    ) {
         const scData = new SCData;
 
         scData.type = SCType.competitor;
@@ -172,9 +179,11 @@ export class SCData {
             wcif.getCumulRoundIds(eventId, round)
                 .map(roundId => new CumulRoundInfo(wcif, roundId));
 
+        /* Group data */
         scData.groupNum = wcif.getGroupNum(actId);
         scData.groupRoom = wcif.getGroupRoom(actId);
-        scData.numRooms = wcif.getNumRooms();
+        const optionId = RoomOption.genId(scData.groupRoom);
+        scData.groupRoomAbbr = optionsObj[optionId].value;
 
         return scData;
     }
@@ -215,8 +224,7 @@ export class SCData {
                 .map(roundId => new CumulRoundInfo(wcif, roundId));
 
         scData.groupNum = null;
-        scData.groupRoom = null;
-        scData.numRooms = null;
+        scData.groupRoomAbbr = null;
 
         return scData;
     }
@@ -226,12 +234,13 @@ export class SCData {
  * Generate a list of SCData objects for a group from its activity ID
  *
  * @param {WCIF} wcif - WCIF object
+ * @param {Object<string, Option>} optionsObj - Map-like object that maps Option IDs to Option objects
  * @param {string} eventId - Event ID, e.g. '333'
  * @param {number} round - Round number
  * @param {number} actId - Activity ID
  * @returns {SCData[]}
  */
-function getScDataForGroup(wcif, eventId, round, actId) {
+function getScDataForGroup(wcif, optionsObj, eventId, round, actId) {
     /* Note: strictly speaking, passing the event ID and round number is unnecessary;
      * however, this function is only called by other functions that already
      * have the event ID and round. Passing these values is an intentional
@@ -240,7 +249,7 @@ function getScDataForGroup(wcif, eventId, round, actId) {
      */
 
     return wcif.getCompetitorsFromActId(actId)
-        .map(registrantId => SCData.competitorScData(wcif, eventId, round, actId, registrantId));
+        .map(registrantId => SCData.competitorScData(wcif, optionsObj, eventId, round, actId, registrantId));
 }
 
 /**
@@ -256,7 +265,7 @@ export function getScDataForRound(wcif, optionsObj, eventId, round) {
     /* Non-blank (competitor-specific) scorecards */
     const scDataArr =
         wcif.getGroupActIds(eventId, round)
-        .flatMap(actId => getScDataForGroup(wcif, eventId, round, actId));
+        .flatMap(actId => getScDataForGroup(wcif, optionsObj, eventId, round, actId));
 
     /* Add blank scorecards */
     scDataArr.push(...getScDataForRoundBlanks(wcif, optionsObj, eventId, round));
