@@ -318,7 +318,9 @@ export function getScDataForRoundBlanks(wcif, optionsObj, eventId, round) {
     let numFillerBlanks;
     if (wcif.groupsAreAssigned(eventId, round)) {
         const numCompetitors = wcif.getNumAdvancingToRound(eventId, round);
-        numFillerBlanks = scPerPage - (numCompetitors % scPerPage);
+
+        const remainder = numCompetitors % scPerPage;
+        numFillerBlanks = remainder === 0 ? 0 : scPerPage - remainder;
     } else {
         // No groups have been assigned; no need to add filler blanks
         numFillerBlanks = 0;
