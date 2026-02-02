@@ -548,8 +548,8 @@ function getBlankPagesPerRound(wcif) {
 export function optTabsCreate(wcif) {
     const tabClasses = [
         HelpOptionsTab,
-        BlanksOptionsTab,
         RoomOptionsTab,
+        BlanksOptionsTab,
     ];
 
     return tabClasses.map(cls => new cls(wcif));
