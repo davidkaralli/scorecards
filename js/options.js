@@ -73,8 +73,6 @@ export class Option {
     }
 };
 
-// TODO: show the default value in a corner as grayscale
-// TODO: validate as a reasonable positive integer, or only let the user enter digits
 export class RoundBlanksOption extends Option {
     /**
      * Generate the ID that corresponds to the given arguments
@@ -153,7 +151,6 @@ export class OptionsTab {
      * Description to show up at the top of the tab's content
      * @type {string}
      */
-    // TODO: delete? maybe this should be part of the div
     desc;
 
     /**
@@ -240,13 +237,13 @@ class HelpOptionsTab extends OptionsTab {
 class BlanksOptionsTab extends OptionsTab {
     /**
      * Event listener to prevent the user from pasting '-' or '.'
-     * TODO: jsdoc type
-     * @param {*} event
+     *
+     * @param {Event} e - Event object (NOT a WCA event)
      */
-    #beforeinputEventListener(event) {
+    #beforeinputEventListener(e) {
         // Don't allow non-digit characters
-        if (event.data && /\D/.test(event.data)) {
-            event.preventDefault();
+        if (e.data && /\D/.test(e.data)) {
+            e.preventDefault();
         }
     }
 
@@ -337,7 +334,7 @@ class BlanksOptionsTab extends OptionsTab {
 
                 td = document.createElement('td');
                 input = this.#createInput(option);
-                // TODO: add event listener to prevent letters from being pasted
+
                 td.appendChild(input);
                 tr.appendChild(td);
 
@@ -359,8 +356,6 @@ class BlanksOptionsTab extends OptionsTab {
      * TODO: comment
      * @param {WCIF} wcif - WCIF object
      */
-    // TODO: add WCIF to OptionsTab parent class?
-    // TODO: define the desc within this object
     constructor(wcif) {
         const tabName = 'Blank scorecards';
         const id = 'numBlanks';
@@ -471,8 +466,6 @@ class RoomOptionsTab extends OptionsTab {
      * TODO: comment
      * @param {WCIF} wcif - WCIF object
      */
-    // TODO: add WCIF to OptionsTab parent class?
-    // TODO: define the desc within this object
     constructor(wcif) {
         const tabName = 'Rooms';
         const id = 'roomAbbrs';
