@@ -44,7 +44,7 @@ export class Option {
      *
      * Must be overridden by the child class
      *
-     * @param  {...any} args 
+     * @param  {...any} args
      */
     static genId(...args) {
         throw new Error(`Called genId on generic Option object. Args: ${args}`);
@@ -477,7 +477,7 @@ class RoomOptionsTab extends OptionsTab {
         const tabName = 'Rooms';
         const id = 'roomAbbrs';
         const desc = 'Enter an abbreviation (max 2 letters) for each room. ' +
-            'This will show up in the "Group" field of a scorecard. ' + 
+            'This will show up in the "Group" field of a scorecard. ' +
             'If you\'d like, you can leave abbreviations blank.';
 
         super(tabName, id, desc, wcif);
