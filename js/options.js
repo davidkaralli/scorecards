@@ -271,10 +271,61 @@ class BlanksOptionsTab extends OptionsTab {
     }
 
     /**
+     * @param {string} eventId - Event ID, e.g. '333'
+     * @param {number} round - Round number
+     * @returns {number} - number of blanks for the round
+     */
+    #getBlankPagesForRound(eventId, round) {
+        // If groups are already assigned, just add one page of blank scorecards
+        if (this.wcif.groupsAreAssigned(eventId, round)) {
+            return 1;
+        }
+
+        // If groups aren't already assigned, provide scorecards for filling in at the competition,
+        // plus one extra page of blank scorecards
+        const numCompetitors = this.wcif.getNumAdvancingToRound(eventId, round);
+        const scPerPage = 4;
+
+        return (numCompetitors / scPerPage) + 1;
+    }
+
+    /**
+     * @param {string} eventId - Event ID, e.g. '333'
+     * @returns {Object<number, number>}
+     *   Map-like object that converts a round (number) to the number of blank pages
+     */
+    #getRoundToBlankPagesObj(eventId) {
+        const numRounds = this.wcif.getNumRounds(eventId);
+
+        const roundToBlankPages = {};
+
+        for (let round = 1; round <= numRounds; round++) {
+            roundToBlankPages[round] = this.#getBlankPagesForRound(eventId, round);
+        }
+
+        return roundToBlankPages;
+    }
+
+    /**
+     * @returns {Object<string, Object<number, number>>}
+     *   Map-like object that converts an eventId (string) and round (number) to the number of blank pages,
+     *   e.g. to get the number of blank pages in 3x3 Round 1: obj['333'][1]
+     */
+    #getNumBlankPagesObj() {
+        let numBlankPagesObj = {};
+
+        for (const eventId of this.wcif.getEventIds()) {
+            numBlankPagesObj[eventId] = this.#getRoundToBlankPagesObj(eventId);
+        }
+
+        return numBlankPagesObj;
+    }
+
+    /**
      * Finish generating the HTML content for the tab
      */
     #finishDiv() {
-        const numBlanksObj = getBlankPagesPerRound(this.wcif);
+        const numBlankPagesObj = this.#getNumBlankPagesObj();
 
         // Create the table
         const table = document.createElement('table');
@@ -311,8 +362,8 @@ class BlanksOptionsTab extends OptionsTab {
         const bgClasses = ['odd-row', 'even-row'];
         let rowClassesInd = 0;
 
-        for (const eventId of Object.keys(numBlanksObj)) {
-            const eventDict = numBlanksObj[eventId];
+        for (const eventId of Object.keys(numBlankPagesObj)) {
+            const eventDict = numBlankPagesObj[eventId];
 
             td = document.createElement('td');
             td.textContent = WCIF.eventIdToShortName[eventId];
@@ -477,60 +528,6 @@ class RoomOptionsTab extends OptionsTab {
 
         this.#finishDiv(wcif);
     }
-}
-
-/**
- * TODO: description
- * @param {WCIF} wcif - WCIF object
- * @param {string} eventId - Event ID, e.g. '333'
- * @param {number} round - Round number
- * @returns {number} - number of blanks for the round
- */
-function getBlankPagesForRound(wcif, eventId, round) {
-    // If groups are already assigned, just add a page of emergency blank scorecards
-    if (wcif.groupsAreAssigned(eventId, round)) {
-        return 1;
-    }
-
-    // If groups aren't already assigned, provide scorecards for filling in at the competition,
-    // plus one page of extra blank scorecards
-    const numCompetitors = wcif.getNumAdvancingToRound(eventId, round);
-    const scPerPage = 4;
-
-    return (numCompetitors / scPerPage) + 1;
-}
-
-/**
- * TODO: description
- * @param {WCIF} wcif - WCIF object
- * @param {string} eventId - Event ID, e.g. '333'
- * @returns {Object} - TODO: describe; format is object['333'][1] = 5
- */
-function getBlankPagesPerRoundByEvent(wcif, eventId) {
-    const numRounds = wcif.getNumRounds(eventId);
-
-    const blanksPerRound = {};
-
-    for (let round = 1; round <= numRounds; round++) {
-        blanksPerRound[round] = getBlankPagesForRound(wcif, eventId, round);
-    }
-
-    return blanksPerRound;
-}
-
-/**
- * TODO: description
- * @param {WCIF} wcif - WCIF object
- * @returns {Object} - TODO: describe; format is object['333'][1] = 5
- */
-function getBlankPagesPerRound(wcif) {
-    let blanksPerRound = {};
-
-    for (const eventId of wcif.getEventIds()) {
-        blanksPerRound[eventId] = getBlankPagesPerRoundByEvent(wcif, eventId);
-    }
-
-    return blanksPerRound;
 }
 
 /**
