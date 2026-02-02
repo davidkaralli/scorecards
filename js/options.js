@@ -101,9 +101,8 @@ export class RoomOption extends Option {
     /**
      * Generate the ID that corresponds to the given arguments
      *
-     * @param {string} eventId - Event ID, e.g. '333'
-     * @param {number} round - Round number
-     * @returns {string} - input name, e.g. 'blanks-round-333-r1'
+     * @param {string} room - Room name, e.g. 'Left Stage'
+     * @returns {string} - input name, e.g. 'room-abbr-Left-Stage'
      */
     static genId(room) {
         const roomNoSpaces = room.replace(' ', '-');
@@ -111,7 +110,7 @@ export class RoomOption extends Option {
     }
 
     /**
-     * @param {string} room - Room name
+     * @param {string} room - Room name, e.g. 'Left Stage'
      * @param {number} defaultValue - Default room abbreviation (could be an empty string)
      */
     constructor(room, defaultValue) {
