@@ -6,10 +6,6 @@
 
 import { WCIF } from './wcif.js'
 
-// TODO: options need:
-// - which type of option (inheritance)
-// - an HTML representation corresponding to the type
-// - data
 export class Option {
     /* HTML data */
     /**

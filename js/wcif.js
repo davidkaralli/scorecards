@@ -4,19 +4,6 @@
  * @author David Karalli
  */
 
-/* TODO: provide the following information:
-   - Competition name
-   - Competition round/events list
-   - Competitors
-   - Competitor names
-   - Competitor IDs
-   - Competitor WCA IDs
-   - Groups
-   - Time limit
-   - Cutoffs
-   - Formats
-*/
-
 export class WCIF {
 	/* Competition ID, e.g. 'WesternChampionship2025' */
 	compId;

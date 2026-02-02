@@ -461,24 +461,6 @@ function drawCutLines(doc) {
 }
 
 
-/* TODO: create a scorecard drawer that draws the following info:
- *
- * competition name
- * person id
- * event
- * group
- * person name (make sure names with accents work)
- * WCA ID
- * time limit (make sure Everything in Evanston time limit fits)
- * penalty example
- * pre-cutoff boxes
- * cutoff
- * post-cutoff boxes
- * extras
- */
-
-
-
 /**
  * Return the horizontal center coordinate of a scorecard, assuming the coordinate of the top left of the scorecard is (0, 0).
  *
